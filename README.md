@@ -167,3 +167,7 @@ restrito (namespaces limitados), pode ser necessário
 webview conseguir inicializar. **Isso não é necessário na sua sessão de
 desktop normal** — é só uma particularidade de rodar dentro de um ambiente
 de automação sandboxed.
+
+## Licença
+
+[MIT](LICENSE).
