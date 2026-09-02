@@ -16,19 +16,25 @@ npm run tauri dev
 Só duas áreas de texto separadas por uma linha — sem header, sem seletor,
 sem rodapé: digite em cima, a tradução aparece embaixo, `Esc` fecha,
 `Tab` inverte o par de idioma atual (ver abaixo). Idioma não é escolhido
-por clique; é definido por config ou por flag de CLI (abaixo).
+por dropdown; é definido por config ou por flag de CLI (abaixo) — a única
+UI de idioma é um badge pequeno centralizado na própria linha divisória
+("PT → EN ⇄"), só pra você saber em que direção está traduzindo.
 
 ### `Tab`: inverter idioma em execução
 
-Com a janela aberta, `Tab` inverte origem↔destino do par **atual** (não
-troca pra um idioma diferente — só espelha o que já está configurado, ex:
-pt→en vira en→pt). Se já havia uma tradução na tela, ela sobe pro campo de
-entrada e é retraduzida na hora — igual ao botão de swap do Google
-Translate. Pensado pro caso de "quero digitar em inglês e ver como fica em
-PT-BR, ou vice-versa" sem precisar fechar e reabrir com outra flag. Não
-funciona com `source_lang = "auto"` (não tem pra onde inverter, já que não
-sabemos qual idioma foi detectado) — nesse caso mostra um erro pedindo pra
-definir a origem explicitamente.
+Com a janela aberta, `Tab` (ou clique no `⇄` do badge) inverte
+origem↔destino do par **atual** (não troca pra um idioma diferente — só
+espelha o que já está configurado, ex: pt→en vira en→pt). Se já havia uma
+tradução na tela, ela sobe pro campo de entrada e é retraduzida na hora —
+igual ao botão de swap do Google Translate. Pensado pro caso de "quero
+digitar em inglês e ver como fica em PT-BR, ou vice-versa" sem precisar
+fechar e reabrir com outra flag — dá pra ir alternando e completando a
+frase nas duas línguas aos poucos. O badge pisca (texto e seta) por um
+instante a cada troca, pra deixar a inversão visualmente óbvia sem
+precisar de nenhum elemento extra na UI. Não funciona com
+`source_lang = "auto"` (não tem pra onde inverter, já que não sabemos qual
+idioma foi detectado) — nesse caso mostra um erro pedindo pra definir a
+origem explicitamente.
 
 ## Como o atalho funciona em cada plataforma
 

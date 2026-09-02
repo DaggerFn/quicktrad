@@ -57,9 +57,71 @@ body {
 }
 
 .divider {
+  position: relative;
   height: 1px;
   flex-shrink: 0;
   background: var(--border);
+}
+
+.lang-pill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.lang-pill button {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.lang-pill button:hover {
+  color: var(--border);
+}
+
+@keyframes lang-pill-flash {
+  0% {
+    color: var(--text-dim);
+  }
+  30% {
+    color: var(--border);
+  }
+  100% {
+    color: var(--text-dim);
+  }
+}
+
+@keyframes lang-arrow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.lang-pill.flash #lang-text {
+  animation: lang-pill-flash 420ms ease-out;
+}
+
+.lang-pill.flash #swap-btn {
+  animation: lang-pill-flash 420ms ease-out, lang-arrow-spin 420ms ease-out;
 }
 
 #result.placeholder {

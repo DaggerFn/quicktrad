@@ -10,7 +10,12 @@
 
   <body>
     <textarea id="input" placeholder="Digite para traduzir" rows="1" autofocus></textarea>
-    <div class="divider"></div>
+    <div class="divider">
+      <div class="lang-pill" id="lang-pill">
+        <span id="lang-text">…</span>
+        <button id="swap-btn" type="button" aria-label="Inverter idiomas">⇄</button>
+      </div>
+    </div>
     <div id="result" class="placeholder">Tradução</div>
   </body>
 </html>
