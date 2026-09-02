@@ -82,7 +82,18 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.applyStatusLine(text)
-        if (inputField.text.trim() !== "") root.runQuery(inputField.text)
+        // A tradução que já estava pronta é o texto no novo idioma de
+        // origem — sobe ela pro campo (em vez de reprocessar o texto
+        // antigo, que ainda está no idioma errado pro novo par).
+        if (root.resultText.trim() !== "") {
+          inputField.text = root.resultText
+        }
+        root.resultText = ""
+        root.resultError = ""
+        if (inputField.text.trim() !== "") {
+          debounce.stop()
+          root.runQuery(inputField.text)
+        }
       }
     }
   }
