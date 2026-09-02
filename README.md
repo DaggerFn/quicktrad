@@ -73,22 +73,34 @@ plataforma que rode a janela flutuante.
 | Clique no `⇄` | Widget da barra | Mesma ação do `Tab`, via mouse |
 | `Esc` | Widget da barra ou janela flutuante | Fecha |
 
-## Idioma: config ou flags de CLI
+## Configuração inicial: chave da DeepL
 
-Arquivo em `~/.config/quicktrad/config.toml` (Linux/macOS) ou
-`%APPDATA%\quicktrad\config.toml` (Windows), criado automaticamente na
-primeira execução:
+O provedor oficial é a **DeepL** — motor neural de verdade (não um
+"lookup" de frases parecidas como o MyMemory), consistentemente melhor em
+PT/EN/línguas europeias. Sem uma key configurada, a tradução retorna um
+erro explicando isso.
+
+1. Crie uma conta grátis em **https://www.deepl.com/en/pro-api** (tier
+   free, sem cartão de crédito — 500k caracteres/mês).
+2. Copie a Authentication Key gerada.
+3. Abra `~/.config/quicktrad/config.toml` (Linux/macOS) ou
+   `%APPDATA%\quicktrad\config.toml` (Windows) — o arquivo é criado
+   automaticamente na primeira execução — e cole em `api_keys.deepl`:
 
 ```toml
-provider = "mymemory"      # mymemory | libretranslate | google | deepl
+provider = "deepl"      # deepl | mymemory | libretranslate | google
 source_lang = "pt"
 target_lang = "en"
 libretranslate_url = "https://libretranslate.com/translate"
 
 [api_keys]
-deepl = "sua-chave-aqui"
+deepl = "sua-chave-aqui:fx"
 libretranslate = "sua-chave-aqui"   # se a instância exigir
 ```
+
+Não quer criar conta agora? Troque `provider` pra `"mymemory"` — funciona
+sem key nenhuma, só que com qualidade bem mais instável (é uma translation
+memory, não tradução de verdade — ver comparação abaixo).
 
 Ou passe o par de idiomas na hora de invocar, por flag — pensado pra ter um
 bind por par (ex: um bind pt→en, outro en→pt, outro pt→ja):
@@ -113,19 +125,30 @@ o.bind("SUPER + SHIFT + E", "Quicktrad EN→PT", { launch = "quicktrad --en --pt
 
 ### Provedores de tradução
 
-- **`mymemory`** (default): funciona sem cadastro nem API key. É uma
-  translation memory, não um motor de MT puro — boa para frases curtas do
-  dia a dia, mas pode errar em textos incomuns. Não faz auto-detecção de
-  idioma (é preciso definir `source_lang` explicitamente, nunca `"auto"`).
+- **`deepl`** (default/oficial): motor neural de verdade, melhor qualidade
+  pra PT/EN/línguas europeias. Requer `api_keys.deepl` — ver
+  [Configuração inicial](#configuração-inicial-chave-da-deepl) acima. Tier
+  free real (500k caracteres/mês, sem cartão).
+- **`mymemory`**: funciona sem cadastro nem API key. É uma translation
+  memory (procura a frase mais parecida num banco, não traduz "de
+  verdade") — serve pra uso casual sem configurar nada, mas erra bastante
+  em texto incomum, gíria ou frase mista. Não faz auto-detecção de idioma
+  (é preciso definir `source_lang` explicitamente, nunca `"auto"`).
 - **`libretranslate`**: melhor se você hospedar sua própria instância
   (`libretranslate_url`) — a instância pública `libretranslate.com` passou a
   exigir API key paga. Suporta auto-detecção (`source_lang = "auto"`).
 - **`google`**: endpoint público não-oficial do Google Translate, sem key,
-  mas sujeito a bloqueio/rate-limit dependendo da rede.
-- **`deepl`**: melhor qualidade, requer `api_keys.deepl` (tem plano free).
+  mas sujeito a bloqueio/rate-limit dependendo da rede — não é a API
+  oficial do Google (essa ainda não está implementada, ver issue de
+  arquitetura de providers abaixo).
 
-Adicionar um novo provedor é só implementar o trait `Provider` em
-`src-tauri/src/translation.rs` e registrar no `build_provider`.
+Adicionar um novo provedor hoje é implementar o trait `Provider` em
+`src-tauri/src/translation.rs` e registrar no `build_provider` — funciona,
+mas é manual e centralizado num arquivo só. Uma reformulação pra
+arquitetura hexagonal (portas/adaptadores), pensada pra deixar plugar
+qualquer provider — Google oficial, LLMs (Claude/Gemini/ChatGPT),
+LLM self-hosted, etc. — sem tocar em código central, está mapeada como
+issue: **[#1](https://github.com/DaggerFn/quicktrad/issues/1)**.
 
 ## Modo headless (CLI, sem abrir janela)
 

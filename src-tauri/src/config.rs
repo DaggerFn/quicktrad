@@ -18,16 +18,20 @@ pub struct AppConfig {
 }
 
 fn default_provider() -> String {
-    // Único provedor que funciona sem cadastro/API key logo na primeira
-    // execução. Troque para "libretranslate" (self-hosted) ou "deepl" (com
-    // api_keys.deepl) para melhor qualidade — ver README.
-    "mymemory".into()
+    // Suporte oficial hoje: DeepL, pela qualidade (motor neural de verdade,
+    // não translation-memory como o MyMemory). Exige api_keys.deepl — sem
+    // isso a tradução retorna erro pedindo pra configurar. Tier grátis da
+    // DeepL (deepl.com/en/pro-api) não pede cartão. Quem preferir zero
+    // configuração pode trocar pra "mymemory" no config.toml (sem key, mas
+    // qualidade bem mais instável — ver README). Arquitetura de providers
+    // vai ficar mais plugável (issue rastreando isso no repo).
+    "deepl".into()
 }
 
 fn default_source() -> String {
-    // MyMemory não faz auto-detecção; "pt" é o ponto de partida mais útil
-    // para quem já escreve em português. Providers com auto-detect (libretranslate,
-    // deepl, google) aceitam trocar para "auto" no seletor da UI.
+    // "pt" (em vez de "auto") de propósito: o atalho de swap (Tab) não
+    // sabe pra onde inverter com origem "auto", então esse seria um erro
+    // logo na primeira tecla pra quem não mexeu na config ainda.
     "pt".into()
 }
 

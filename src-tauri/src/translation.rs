@@ -171,17 +171,14 @@ impl Provider for DeepL {
             "https://api-free.deepl.com/v2/translate"
         };
 
-        let mut params = vec![
-            ("auth_key", self.api_key.as_str()),
-            ("text", text),
-            ("target_lang", target),
-        ];
+        let mut params = vec![("text", text), ("target_lang", target)];
         if source != "auto" {
             params.push(("source_lang", source));
         }
 
         let res = client
             .post(base)
+            .header("Authorization", format!("DeepL-Auth-Key {}", self.api_key))
             .form(&params)
             .send()
             .await
@@ -225,6 +222,21 @@ impl Provider for Unimplemented {
     }
 }
 
+/// Erro dedicado pra "provider válido mas sem key configurada" — separado
+/// de `Unimplemented` pra dar uma mensagem acionável (com o link de
+/// cadastro) direto no resultado da tradução, em vez de confundir com
+/// "provider não existe".
+struct MissingApiKey {
+    message: String,
+}
+
+#[async_trait]
+impl Provider for MissingApiKey {
+    async fn translate(&self, _text: &str, _source: &str, _target: &str) -> Result<String, String> {
+        Err(self.message.clone())
+    }
+}
+
 fn build_provider(cfg: &AppConfig) -> Box<dyn Provider> {
     match cfg.provider.as_str() {
         "mymemory" => Box::new(MyMemory),
@@ -238,7 +250,12 @@ fn build_provider(cfg: &AppConfig) -> Box<dyn Provider> {
                 api_key: key.clone(),
                 pro: !key.ends_with(":fx"),
             }),
-            None => Box::new(Unimplemented("deepl (defina api_keys.deepl no config.toml)".into())),
+            None => Box::new(MissingApiKey {
+                message: "Falta configurar a DeepL: crie uma key grátis em \
+                    https://www.deepl.com/en/pro-api e defina api_keys.deepl \
+                    no config.toml (~/.config/quicktrad/config.toml)."
+                    .into(),
+            }),
         },
         other => Box::new(Unimplemented(other.to_string())),
     }
