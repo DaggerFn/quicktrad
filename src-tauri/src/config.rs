@@ -15,6 +15,12 @@ pub struct AppConfig {
     pub libretranslate_url: String,
     #[serde(default)]
     pub api_keys: HashMap<String, String>,
+    /// Opt-in: grava cada texto digitado (e sua contagem de caracteres) num
+    /// banco sqlite local, pra acompanhar quanto de uso (caracteres, unidade
+    /// de cobrança da DeepL) já foi gasto. Desligado por padrão porque grava
+    /// o texto literal digitado, não só o total — ver README.
+    #[serde(default)]
+    pub save_history: bool,
 }
 
 fn default_provider() -> String {
@@ -51,14 +57,20 @@ impl Default for AppConfig {
             target_lang: default_target(),
             libretranslate_url: default_libretranslate_url(),
             api_keys: HashMap::new(),
+            save_history: false,
         }
     }
 }
 
-fn config_path() -> PathBuf {
+pub fn config_dir() -> PathBuf {
     let mut dir = dirs::config_dir().unwrap_or_else(std::env::temp_dir);
     dir.push("quicktrad");
     let _ = fs::create_dir_all(&dir);
+    dir
+}
+
+fn config_path() -> PathBuf {
+    let mut dir = config_dir();
     dir.push("config.toml");
     dir
 }

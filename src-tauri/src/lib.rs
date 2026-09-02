@@ -1,5 +1,6 @@
 mod config;
 mod translation;
+mod usage;
 
 use config::AppConfig;
 use tauri::{Emitter, Manager, WindowEvent};
@@ -166,6 +167,30 @@ pub fn try_run_headless(args: &[String]) -> Option<i32> {
         let cfg = config::load();
         println!("{} {}", cfg.source_lang, cfg.target_lang);
         return Some(0);
+    }
+
+    if args.iter().any(|a| a == "--usage") {
+        let cfg = config::load();
+        if !cfg.save_history {
+            eprintln!(
+                "[quicktrad] save_history está desligado no config.toml — nenhum uso foi \
+                 registrado. Ligue com `save_history = true` pra passar a contar."
+            );
+            return Some(1);
+        }
+        return Some(match usage::summary(&cfg) {
+            Ok(s) => {
+                println!(
+                    "provider={} chars_total={} entries_total={} chars_este_mes={} entries_este_mes={}",
+                    s.provider, s.chars_total, s.entries, s.chars_month, s.entries_month
+                );
+                0
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                1
+            }
+        });
     }
 
     None

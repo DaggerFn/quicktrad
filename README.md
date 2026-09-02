@@ -92,6 +92,7 @@ provider = "deepl"      # deepl | mymemory | libretranslate | google
 source_lang = "pt"
 target_lang = "en"
 libretranslate_url = "https://libretranslate.com/translate"
+save_history = false    # true grava cada texto digitado num sqlite local, ver seção própria abaixo
 
 [api_keys]
 deepl = "sua-chave-aqui:fx"
@@ -149,6 +150,36 @@ arquitetura hexagonal (portas/adaptadores), pensada pra deixar plugar
 qualquer provider — Google oficial, LLMs (Claude/Gemini/ChatGPT),
 LLM self-hosted, etc. — sem tocar em código central, está mapeada como
 issue: **[#1](https://github.com/DaggerFn/quicktrad/issues/1)**.
+
+## Histórico local de uso (opcional)
+
+Pra acompanhar quantos caracteres (a unidade que a DeepL cobra — não
+"tokens" no sentido de LLM, mas o termo comum pra "quanto eu já gastei") já
+foram enviados ao provedor, tem um contador local opcional, desligado por
+padrão porque grava o **texto literal digitado** (não só o total) — decisão
+consciente: sem o texto, não dá pra auditar depois o que foi enviado.
+
+Ligar em `config.toml`:
+
+```toml
+save_history = true
+```
+
+Com isso ligado, toda tradução bem-sucedida grava uma linha (timestamp,
+provedor, par de idiomas, contagem de caracteres, texto) num sqlite local em
+`~/.config/quicktrad/usage.db` (mesma pasta do `config.toml`; nada sai da
+máquina além do que já ia pro provedor de tradução). Consultar o total:
+
+```sh
+quicktrad --usage
+# provider=deepl chars_total=1234 entries_total=42 chars_este_mes=567 entries_este_mes=12
+```
+
+`chars_este_mes` reinicia no dia 1 de cada mês — pensado pra acompanhar o
+teto do tier free da DeepL (500k caracteres/mês). O contador é por provedor
+atual (`cfg.provider`); trocar de provedor no config mostra o total desse
+outro provedor, não soma tudo junto. Traduções que falharam antes de sair da
+máquina (ex: key ausente) não são contadas — só o que de fato foi enviado.
 
 ## Modo headless (CLI, sem abrir janela)
 

@@ -262,7 +262,14 @@ fn build_provider(cfg: &AppConfig) -> Box<dyn Provider> {
 }
 
 pub async fn translate_text(cfg: &AppConfig, text: &str) -> Result<String, String> {
-    build_provider(cfg)
+    let result = build_provider(cfg)
         .translate(text, &cfg.source_lang, &cfg.target_lang)
-        .await
+        .await;
+    // Só grava em caso de sucesso: é o texto que realmente foi enviado (e
+    // cobrado, no caso da DeepL) pelo provider — uma tentativa que falhou
+    // antes de sair da máquina (ex: key ausente) não gastou nada.
+    if result.is_ok() {
+        crate::usage::log_if_enabled(cfg, text);
+    }
+    result
 }
