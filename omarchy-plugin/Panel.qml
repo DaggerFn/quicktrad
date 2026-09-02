@@ -21,6 +21,7 @@ Panel {
   property string resultError: ""
   property bool querying: false
   property int querySeq: 0
+  property bool pillFlash: false
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -58,6 +59,24 @@ Panel {
     swapProc.running = true
   }
 
+  // Mesmo efeito visual da janela flutuante: o par pisca e a seta gira por
+  // um instante, deixando a inversão óbvia mesmo sem nenhum elemento extra
+  // na UI. spinTurns incrementa (em vez de resetar pra 0) porque Behavior
+  // anima a partir do valor atual — resetar faria a seta "voltar" em vez
+  // de continuar girando pro mesmo lado a cada swap.
+  property int spinTurns: 0
+  function flashPill() {
+    spinTurns += 1
+    pillFlash = true
+    flashResetTimer.restart()
+  }
+
+  Timer {
+    id: flashResetTimer
+    interval: 160
+    onTriggered: root.pillFlash = false
+  }
+
   onOpenedChanged: {
     if (opened) {
       inputField.text = ""
@@ -82,6 +101,7 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.applyStatusLine(text)
+        root.flashPill()
         // A tradução que já estava pronta é o texto no novo idioma de
         // origem — sobe ela pro campo (em vez de reprocessar o texto
         // antigo, que ainda está no idioma errado pro novo par).
@@ -182,13 +202,15 @@ Panel {
           Text {
             id: pairLabel
             text: (root.sourceLang || "…").toUpperCase() + " → " + (root.targetLang || "…").toUpperCase()
-            color: Qt.darker(root.bar.foreground, 1.4)
+            color: root.pillFlash ? root.bar.foreground : Qt.darker(root.bar.foreground, 1.4)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
             anchors.right: swapBtn.left
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
+
+            Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.OutCubic } }
           }
 
           Text {
@@ -199,6 +221,9 @@ Panel {
             font.pixelSize: Style.font.title
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            rotation: root.spinTurns * 180
+
+            Behavior on rotation { NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
 
             MouseArea {
               anchors.fill: parent

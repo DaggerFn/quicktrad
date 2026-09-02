@@ -151,7 +151,8 @@ tradução ali mesmo, sem abrir a janela flutuante. Ele não reimplementa
 tradução em QML: só chama `quicktrad --query/--swap/--status` como
 subprocesso, então compartilha config e providers com o app principal.
 Dentro do card: `Tab` (com o campo focado) ou clique no `⇄` invertem o par
-de idioma, igual à janela flutuante — ver [Atalhos de teclado](#atalhos-de-teclado-resumo).
+de idioma, igual à janela flutuante — mesmo efeito visual de flash no texto
+e giro na seta — ver [Atalhos de teclado](#atalhos-de-teclado-resumo).
 
 Instalar (Linux com Omarchy):
 
