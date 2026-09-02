@@ -1,0 +1,78 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppConfig {
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    #[serde(default = "default_source")]
+    pub source_lang: String,
+    #[serde(default = "default_target")]
+    pub target_lang: String,
+    #[serde(default = "default_libretranslate_url")]
+    pub libretranslate_url: String,
+    #[serde(default)]
+    pub api_keys: HashMap<String, String>,
+}
+
+fn default_provider() -> String {
+    // Único provedor que funciona sem cadastro/API key logo na primeira
+    // execução. Troque para "libretranslate" (self-hosted) ou "deepl" (com
+    // api_keys.deepl) para melhor qualidade — ver README.
+    "mymemory".into()
+}
+
+fn default_source() -> String {
+    // MyMemory não faz auto-detecção; "pt" é o ponto de partida mais útil
+    // para quem já escreve em português. Providers com auto-detect (libretranslate,
+    // deepl, google) aceitam trocar para "auto" no seletor da UI.
+    "pt".into()
+}
+
+fn default_target() -> String {
+    "en".into()
+}
+
+fn default_libretranslate_url() -> String {
+    "https://libretranslate.com/translate".into()
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_provider(),
+            source_lang: default_source(),
+            target_lang: default_target(),
+            libretranslate_url: default_libretranslate_url(),
+            api_keys: HashMap::new(),
+        }
+    }
+}
+
+fn config_path() -> PathBuf {
+    let mut dir = dirs::config_dir().unwrap_or_else(std::env::temp_dir);
+    dir.push("quicktrad");
+    let _ = fs::create_dir_all(&dir);
+    dir.push("config.toml");
+    dir
+}
+
+pub fn load() -> AppConfig {
+    let path = config_path();
+    match fs::read_to_string(&path) {
+        Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
+        Err(_) => {
+            let cfg = AppConfig::default();
+            let _ = save(&cfg);
+            cfg
+        }
+    }
+}
+
+pub fn save(cfg: &AppConfig) -> Result<(), String> {
+    let path = config_path();
+    let contents = toml::to_string_pretty(cfg).map_err(|e| e.to_string())?;
+    fs::write(path, contents).map_err(|e| e.to_string())
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "guts.quicktrad",
+  "name": "Quicktrad",
+  "version": "1.0.0",
+  "author": "guts",
+  "description": "Tradutor rápido — digite e veja a tradução, direto na barra",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Quicktrad",
+    "description": "Tradutor rápido — digite e veja a tradução, direto na barra",
+    "category": "Utilities",
+    "allowMultiple": false
+  }
+}
