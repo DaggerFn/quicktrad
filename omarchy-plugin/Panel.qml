@@ -141,6 +141,11 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      // Sem isso, o keyCatcher intercepta TODA tecla antes do campo de
+      // texto (Keys.priority: Keys.BeforeItem) — inclusive Tab, que ele já
+      // consome pra própria navegação entre painéis. Com o campo focado,
+      // deixa a tecla passar direto pro TextField.
+      blocked: inputField.activeFocus
       onCloseRequested: root.close()
 
       Column {
@@ -200,6 +205,8 @@ Panel {
           foreground: root.bar.foreground
           onTextChanged: debounce.restart()
           Keys.onEscapePressed: root.close()
+          // Tab inverte o par atual — mesma tecla da janela flutuante.
+          Keys.onTabPressed: root.runSwap()
         }
 
         Text {

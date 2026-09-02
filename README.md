@@ -32,24 +32,40 @@ definir a origem explicitamente.
 
 ## Como o atalho funciona em cada plataforma
 
-- **Windows / macOS / Linux X11**: a própria aplicação registra um atalho
-  global (`Super+Shift+T` por padrão, ver `src-tauri/src/lib.rs`) via
-  `tauri-plugin-global-shortcut`. Funciona sem configurar nada a mais.
-- **Wayland (Hyprland, GNOME, KDE)**: por design do protocolo, um app não
-  pode capturar uma tecla globalmente sozinho — quem precisa saber da tecla é
-  o compositor. No Omarchy, o bind já foi adicionado em
-  `~/.config/hypr/hyprland.lua`:
+- **No Omarchy** (uso principal hoje): `Super+Shift+T` abre/fecha o **widget
+  da barra** (`omarchy-plugin/`, ver seção própria abaixo), não a janela
+  flutuante. O bind está em `~/.config/hypr/bindings.lua`:
 
   ```lua
-  o.bind("SUPER + SHIFT + T", "Quicktrad", { launch = "quicktrad --toggle" })
+  o.bind("SUPER + SHIFT + T", "Quicktrad", "omarchy-shell guts.quicktrad toggle")
   ```
 
-  A instância já em execução (segurada por `tauri-plugin-single-instance`)
-  apenas mostra/esconde a janela em vez de abrir um processo novo. Em outro
-  Wayland/DE, o equivalente é um bind chamando `quicktrad --toggle`.
+  `omarchy-shell <id> toggle` só repassa uma chamada IPC pro plugin já
+  rodando dentro do Quickshell — não sobe processo novo.
 
-Também há um ícone na bandeja do sistema (tray) com "Mostrar/Ocultar" e
-"Sair", disponível em qualquer plataforma.
+- **Windows / macOS / Linux X11** (sem barra Omarchy): a própria aplicação
+  registra `Super+Shift+T` como atalho global (via
+  `tauri-plugin-global-shortcut`) e abre a **janela flutuante**. Funciona
+  sem configurar nada a mais.
+- **Outro Wayland/DE sem Quickshell** (GNOME, KDE): um app não pode
+  capturar tecla globalmente sozinho — bind `quicktrad --toggle` no seu
+  compositor/DE pra abrir a janela flutuante, igual ao Omarchy fazia antes
+  do widget de barra existir.
+
+A janela flutuante continua existindo e funcionando no Omarchy também —
+`quicktrad --toggle` roda ela direto, sem depender da barra — só não tem
+mais bind global padrão apontando pra ela lá, já que o uso principal agora
+é o widget. Tray icon (`Mostrar/Ocultar` / `Sair`) disponível em qualquer
+plataforma que rode a janela flutuante.
+
+## Atalhos de teclado (resumo)
+
+| Tecla | Onde | Ação |
+|---|---|---|
+| `Super+Shift+T` | Omarchy (compositor) | Abre/fecha o widget da barra |
+| `Tab` | Dentro do widget da barra ou da janela flutuante, com o campo de texto focado | Inverte o par de idioma atual e retraduz |
+| Clique no `⇄` | Widget da barra | Mesma ação do `Tab`, via mouse |
+| `Esc` | Widget da barra ou janela flutuante | Fecha |
 
 ## Idioma: config ou flags de CLI
 
@@ -128,6 +144,8 @@ na barra que abre um card ancorado embaixo dele, com campo de texto e
 tradução ali mesmo, sem abrir a janela flutuante. Ele não reimplementa
 tradução em QML: só chama `quicktrad --query/--swap/--status` como
 subprocesso, então compartilha config e providers com o app principal.
+Dentro do card: `Tab` (com o campo focado) ou clique no `⇄` invertem o par
+de idioma, igual à janela flutuante — ver [Atalhos de teclado](#atalhos-de-teclado-resumo).
 
 Instalar (Linux com Omarchy):
 
@@ -139,10 +157,26 @@ omarchy bar put guts.quicktrad --section right   # ou --section center, etc
 omarchy restart shell
 ```
 
-(Troque `guts` no id/pasta pelo seu usuário/namespace se preferir — não
-precisa ser literal.) O binário `quicktrad` precisa estar no `PATH` (depois
-de `npm run tauri build`, aponte um symlink em `~/.local/bin/quicktrad` pro
-binário gerado, ou instale o pacote/bundle).
+Depois, pra ter o `Super+Shift+T` abrindo o widget (em vez de só clicar o
+ícone na barra), adicione em `~/.config/hypr/bindings.lua`:
+
+```lua
+o.bind("SUPER + SHIFT + T", "Quicktrad", "omarchy-shell guts.quicktrad toggle")
+```
+
+e rode `hyprctl reload`.
+
+(Troque `guts` no id/pasta/bind pelo seu usuário/namespace se preferir —
+não precisa ser literal.) O binário `quicktrad` precisa estar no `PATH`
+(depois de `npm run tauri build`, aponte um symlink em
+`~/.local/bin/quicktrad` pro binário gerado, ou instale o pacote/bundle).
+
+**Nota pra quem for editar o QML**: mudanças em `Panel.qml` só recarregam
+de verdade num widget de barra (`bar-widget`) depois de `omarchy restart
+shell` — o hot-reload automático do Quickshell não recria a instância
+persistente do widget, só re-executa o arquivo pra instâncias novas
+(painéis avulsos tipo `disk-speedtest`). Editar e só fechar/abrir o card
+não é suficiente.
 
 Essa parte é **exclusiva do Omarchy/Quickshell** — nos outros ambientes
 (GNOME, KDE, X11, Windows) o app continua funcionando normalmente como
