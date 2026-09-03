@@ -263,6 +263,11 @@ webview conseguir inicializar. **Isso não é necessário na sua sessão de
 desktop normal** — é só uma particularidade de rodar dentro de um ambiente
 de automação sandboxed.
 
+Se você é uma IA/agente (Claude Code ou outro) mexendo neste repo, leia
+[`AGENTS.md`](AGENTS.md) antes de compilar ou debugar qualquer coisa — tem
+uma lista de bugs de ambiente Linux/Wayland já resolvidos (e por quê) que
+evita redescobrir o mesmo problema do zero a cada sessão.
+
 ## Licença
 
 [MIT](LICENSE).
