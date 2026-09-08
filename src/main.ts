@@ -202,4 +202,5 @@ window.addEventListener("DOMContentLoaded", async () => {
       void doTranslate();
     }
   });
+
 });

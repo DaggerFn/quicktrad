@@ -2,16 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    // GTK3/webkit2gtk usados pelo Tauri no Linux fazem chamadas específicas de
-    // X11 que crasham com "Gdk-Message: Error 71 (Protocol error)" sob Wayland
-    // nativo (visto no KDE Plasma 6). Forçar a GDK a rodar via XWayland evita o
-    // crash; não afeta Windows/macOS nem X11 puro, onde a env var é ignorada.
+    // O padrão continua sendo XWayland pelos bugs GTK/WebKit já documentados,
+    // mas o usuário pode escolher Wayland nativo ou seleção automática em
+    // config.toml. GDK_BACKEND explícito tem precedência sobre o arquivo.
     #[cfg(target_os = "linux")]
-    if std::env::var_os("GDK_BACKEND").is_none() {
-        unsafe {
-            std::env::set_var("GDK_BACKEND", "x11");
-        }
-    }
+    quicktrad_lib::configure_linux_backend();
 
     // webkit2gtk >= 2.42 usa por padrão um renderer via DMA-BUF/GBM pra
     // aceleração de GPU; sob XWayland (ver fix acima) essa alocação falha

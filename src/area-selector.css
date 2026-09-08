@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f8fa;
+  --border: #0f6cbd;
+  --focus: #005fb8;
+  --text: #1b1b1f;
+  --text-dim: #5f6368;
+  --font-ui: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a0d11;
+  --border: #4cc2ff;
+  --focus: #80d4ff;
+  --text: #e6edf3;
+  --text-dim: #9da6b5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 180px;
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  border: 3px dashed var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: center;
+}
+
+main { max-width: 440px; }
+strong { display: block; color: var(--focus); font-size: 17px; }
+p { margin: 12px 0; color: var(--text-dim); line-height: 1.45; }
+output { display: block; min-height: 20px; font-variant-numeric: tabular-nums; }
+.actions { display: flex; justify-content: center; gap: 8px; margin: 16px 0 12px; }
+button {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+button:hover, button:focus-visible { color: var(--focus); outline: 1px solid var(--focus); }
+small { color: var(--text-dim); }
+kbd { font-family: inherit; }
+
+@media (forced-colors: active) {
+  :root { --bg: Canvas; --border: CanvasText; --focus: Highlight; --text: CanvasText; --text-dim: GrayText; }
+}

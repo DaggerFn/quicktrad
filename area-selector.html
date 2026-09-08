@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quicktrad — Definir área fixa</title>
+    <link rel="stylesheet" href="/src/area-selector.css" />
+    <script type="module" src="/src/area-selector.ts" defer></script>
+  </head>
+  <body>
+    <main>
+      <strong>Área fixa do Quicktrad</strong>
+      <p>Mova esta janela pela barra de título e ajuste pelas bordas. O retângulo inteiro será a área do popup.</p>
+      <output id="geometry">Aguardando ajuste…</output>
+      <div class="actions">
+        <button id="save" type="button">Salvar esta área</button>
+        <button id="cancel" type="button">Cancelar</button>
+      </div>
+      <small><kbd>Enter</kbd> salva · <kbd>Esc</kbd> cancela</small>
+    </main>
+  </body>
+</html>

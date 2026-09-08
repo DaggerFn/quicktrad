@@ -54,6 +54,11 @@ pub struct AppConfig {
     /// bandeja e espera o atalho global, o menu ou `quicktrad --toggle`.
     #[serde(default = "default_show_on_start")]
     pub show_on_start: bool,
+    /// Backend gráfico usado no Linux. XWayland permite posicionamento
+    /// absoluto; Wayland nativo deixa a posição sob controle do compositor.
+    /// Não tem efeito em Windows/macOS e pode ser sobrescrito por GDK_BACKEND.
+    #[serde(default)]
+    pub linux_backend: LinuxBackend,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -63,6 +68,17 @@ pub enum WindowPosition {
     CursorMonitor,
     PrimaryMonitor,
     Fixed,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub enum LinuxBackend {
+    #[default]
+    #[serde(rename = "xwayland")]
+    XWayland,
+    #[serde(rename = "wayland")]
+    Wayland,
+    #[serde(rename = "auto")]
+    Auto,
 }
 
 fn default_provider() -> String {
@@ -133,6 +149,7 @@ impl Default for AppConfig {
             always_on_top: default_always_on_top(),
             hide_on_blur: default_hide_on_blur(),
             show_on_start: default_show_on_start(),
+            linux_backend: LinuxBackend::default(),
         }
     }
 }

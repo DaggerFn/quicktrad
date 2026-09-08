@@ -130,6 +130,7 @@ As opções que podem ser ajustadas hoje são:
 | `always_on_top` | `true` | Mantém o popup sobre as outras janelas quando está aberto. |
 | `hide_on_blur` | `true` | Esconde o popup quando ele perde foco. |
 | `show_on_start` | `true` | Com `false`, inicia somente na bandeja até receber atalho, menu ou `quicktrad --toggle`. |
+| `linux_backend` | `"xwayland"` | Linux: `xwayland`, `wayland` ou `auto`. Posição fixa só é garantida em X11/XWayland. |
 
 Exemplo completo, já com os valores padrão da janela:
 
@@ -149,6 +150,7 @@ window_position = "cursor_monitor" # cursor_monitor | primary_monitor | fixed
 always_on_top = true
 hide_on_blur = true
 show_on_start = true
+linux_backend = "xwayland" # Linux: xwayland | wayland | auto
 
 [api_keys]
 deepl = "sua-chave-aqui:fx"
@@ -157,6 +159,39 @@ deepl = "sua-chave-aqui:fx"
 As preferências da janela são reaplicadas em toda abertura. Fonte, idiomas e
 tamanho também entram em vigor ao usar **Recarregar configuração**. Alterar
 `show_on_start` só tem efeito no próximo início do processo.
+
+### Definir uma área fixa visualmente
+
+Para não precisar calcular coordenadas à mão, clique com o botão direito no
+ícone da bandeja e escolha **Definir área fixa**. Uma janela nativa separada é
+aberta; a janela de tradução fica escondida e não recebe controles temporários.
+O mesmo seletor pode ser aberto por `quicktrad --select-area`, útil para binds
+ou testes sem acessar o menu da bandeja.
+
+1. Arraste a barra de título para escolher a posição.
+2. Redimensione pelas bordas ou cantos; o retângulo inteiro representa o popup.
+3. Clique em **Salvar esta área** (ou `Enter`). `Esc`, **Cancelar** ou fechar a
+   janela descartam a mudança.
+
+Ao salvar, o Quicktrad define `window_position = "fixed"` e grava a posição
+e o tamanho escolhidos no `config.toml`. O mecanismo usa a janela nativa,
+não uma captura global de tela: por isso funciona no Windows, X11 e também no
+fluxo Wayland padrão do app (XWayland), sem permissões extras do compositor.
+Você pode refazer a seleção a qualquer momento pelo mesmo menu, ou voltar aos
+modos `cursor_monitor`/`primary_monitor` editando `window_position`.
+
+#### XWayland versus Wayland nativo
+
+O padrão `linux_backend = "xwayland"` permite posicionamento absoluto e evita
+os bugs GTK/WebKit já documentados. Se preferir Wayland nativo, use
+`linux_backend = "wayland"`; com `"auto"`, o GTK escolhe conforme a sessão.
+Uma variável `GDK_BACKEND` definida no ambiente sempre tem precedência.
+
+No Wayland nativo o compositor controla a posição global das janelas, portanto
+`window_position = "fixed"` não pode ser garantido: o item **Definir área
+fixa** fica desabilitado e o valor `fixed` é ignorado. `cursor_monitor` também
+depende do que o compositor expõe. Para reabrir exatamente nas coordenadas
+salvas, escolha XWayland.
 
 ## Configuração inicial: chave da DeepL
 
@@ -185,6 +220,7 @@ window_position = "cursor_monitor"
 always_on_top = true
 hide_on_blur = true
 show_on_start = true
+linux_backend = "xwayland"
 
 [api_keys]
 deepl = "sua-chave-aqui:fx"

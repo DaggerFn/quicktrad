@@ -3,13 +3,38 @@ mod translation;
 mod usage;
 
 use config::{AppConfig, WindowPosition};
-use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WindowEvent};
+use tauri::{
+    Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
 use tauri_plugin_opener::OpenerExt;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
+/// Precisa rodar antes da inicialização do GTK/Tauri. Uma variável de ambiente
+/// explícita sempre vence o config, permitindo override por launcher/script.
+#[cfg(target_os = "linux")]
+pub fn configure_linux_backend() {
+    if std::env::var_os("GDK_BACKEND").is_some() {
+        return;
+    }
+
+    let backend = config::load().linux_backend;
+    unsafe {
+        match backend {
+            config::LinuxBackend::XWayland => std::env::set_var("GDK_BACKEND", "x11"),
+            config::LinuxBackend::Wayland => std::env::set_var("GDK_BACKEND", "wayland"),
+            config::LinuxBackend::Auto => {}
+        }
+    }
+}
+
 fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(selector) = app.get_webview_window("area-selector") {
+        let _ = selector.show();
+        let _ = selector.set_focus();
+        return;
+    }
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
@@ -44,7 +69,12 @@ fn apply_window_config(window: &tauri::WebviewWindow, cfg: &AppConfig) {
     match cfg.window_position {
         WindowPosition::CursorMonitor => move_to_cursor_monitor(window),
         WindowPosition::PrimaryMonitor => move_to_primary_monitor(window),
-        WindowPosition::Fixed => {
+        WindowPosition::Fixed if !fixed_position_supported() => {
+            eprintln!(
+                "[quicktrad] coordenadas fixas ignoradas em Wayland nativo; use XWayland para posicionamento absoluto"
+            );
+        }
+        WindowPosition::Fixed if fixed_position_supported() => {
             if let (Some(x), Some(y)) = (cfg.window_x, cfg.window_y) {
                 let _ = window.set_position(PhysicalPosition::new(x, y));
             } else {
@@ -52,6 +82,11 @@ fn apply_window_config(window: &tauri::WebviewWindow, cfg: &AppConfig) {
                 // popup "sumir"; usa o comportamento seguro padrão.
                 move_to_cursor_monitor(window);
             }
+        }
+        WindowPosition::Fixed => {
+            // Wayland nativo não oferece coordenadas globais controladas pelo
+            // cliente. O compositor decide onde posicionar a janela.
+            eprintln!("[quicktrad] window_position=fixed ignorado em Wayland nativo; use linux_backend=\"xwayland\"");
         }
     }
 }
@@ -90,6 +125,110 @@ fn reload_configuration(app: &tauri::AppHandle) {
         apply_window_config(&window, &cfg);
         let _ = window.emit("config-updated", ());
     }
+}
+
+#[cfg(target_os = "linux")]
+fn fixed_position_supported() -> bool {
+    !std::env::var("GDK_BACKEND")
+        .unwrap_or_default()
+        .split(',')
+        .any(|backend| backend.trim().eq_ignore_ascii_case("wayland"))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn fixed_position_supported() -> bool {
+    true
+}
+
+/// Abre uma janela nativa separada para escolher o retângulo. A janela
+/// principal nunca muda de decoração nem recebe UI temporária, evitando os
+/// estados sobrepostos que a primeira implementação produzia.
+fn start_area_selection(app: &tauri::AppHandle) {
+    if !fixed_position_supported() {
+        eprintln!("[quicktrad] posição fixa requer Windows, X11 ou XWayland; indisponível em Wayland nativo");
+        return;
+    }
+
+    if let Some(selector) = app.get_webview_window("area-selector") {
+        let _ = selector.show();
+        let _ = selector.set_focus();
+        return;
+    }
+
+    let cfg = config::load();
+    let selector = match WebviewWindowBuilder::new(
+        app,
+        "area-selector",
+        WebviewUrl::App("area-selector.html".into()),
+    )
+    .title("Quicktrad — Definir área fixa")
+    .inner_size(cfg.window_width as f64, cfg.window_height as f64)
+    .min_inner_size(320.0, 180.0)
+    .resizable(true)
+    .decorations(true)
+    .always_on_top(true)
+    .skip_taskbar(false)
+    .visible(false)
+    .build()
+    {
+        Ok(window) => window,
+        Err(error) => {
+            eprintln!("[quicktrad] não foi possível abrir o seletor de área: {error}");
+            return;
+        }
+    };
+
+    apply_window_config(&selector, &cfg);
+    let _ = selector.set_always_on_top(true);
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.hide();
+    }
+    let _ = selector.show();
+    let _ = selector.set_focus();
+
+    let app_after_close = app.clone();
+    selector.on_window_event(move |event| {
+        if matches!(event, WindowEvent::CloseRequested { .. }) {
+            show_main_window(&app_after_close);
+        }
+    });
+}
+
+/// Persiste o retângulo escolhido no desktop virtual. As coordenadas são
+/// físicas (necessárias para múltiplos monitores), enquanto o tamanho é salvo
+/// em pixels lógicos, como as demais dimensões da janela no Tauri.
+#[tauri::command]
+fn save_area_selection(window: tauri::WebviewWindow) -> Result<AppConfig, String> {
+    if window.label() != "area-selector" {
+        return Err("comando disponível somente na janela de seleção".into());
+    }
+    let position = window.outer_position().map_err(|e| e.to_string())?;
+    let size = window.inner_size().map_err(|e| e.to_string())?;
+    let scale_factor = window.scale_factor().map_err(|e| e.to_string())?;
+
+    let mut cfg = config::load();
+    cfg.window_position = WindowPosition::Fixed;
+    cfg.window_x = Some(position.x);
+    cfg.window_y = Some(position.y);
+    cfg.window_width = ((size.width as f64 / scale_factor).round() as u32).clamp(320, 2_400);
+    cfg.window_height = ((size.height as f64 / scale_factor).round() as u32).clamp(180, 1_600);
+    config::save(&cfg)?;
+
+    let app = window.app_handle().clone();
+    window.close().map_err(|e| e.to_string())?;
+    show_main_window(&app);
+    Ok(cfg)
+}
+
+#[tauri::command]
+fn cancel_area_selection(window: tauri::WebviewWindow) -> Result<(), String> {
+    if window.label() != "area-selector" {
+        return Err("comando disponível somente na janela de seleção".into());
+    }
+    let app = window.app_handle().clone();
+    window.close().map_err(|e| e.to_string())?;
+    show_main_window(&app);
+    Ok(())
 }
 
 /// Posiciona o popup no centro da área útil do monitor que contém o cursor.
@@ -302,7 +441,9 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if apply_lang_args(app, &argv) {
+            if argv.iter().any(|arg| arg == "--select-area") {
+                start_area_selection(app);
+            } else if apply_lang_args(app, &argv) {
                 show_main_window(app);
             } else {
                 toggle_main_window(app);
@@ -318,6 +459,8 @@ pub fn run() {
             set_config,
             set_font_size,
             swap_languages,
+            save_area_selection,
+            cancel_area_selection,
             hide_window
         ]);
 
@@ -343,7 +486,9 @@ pub fn run() {
             // (Hyprland/GNOME/KDE) o registro tende a falhar silenciosamente
             // por design da plataforma — nesse caso o usuário deve bindar a
             // tecla no compositor chamando `quicktrad --toggle` (ver README).
-            apply_lang_args(&app.handle().clone(), &std::env::args().collect::<Vec<_>>());
+            let startup_args = std::env::args().collect::<Vec<_>>();
+            let select_area_on_start = startup_args.iter().any(|arg| arg == "--select-area");
+            apply_lang_args(&app.handle().clone(), &startup_args);
 
             #[cfg(desktop)]
             {
@@ -366,10 +511,17 @@ pub fn run() {
                 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
                 let toggle_item = MenuItem::with_id(app, "toggle", "Mostrar/Ocultar", true, None::<&str>)?;
+                let area_supported = fixed_position_supported();
+                let area_label = if area_supported {
+                    "Definir área fixa"
+                } else {
+                    "Definir área fixa (requer XWayland)"
+                };
+                let area_item = MenuItem::with_id(app, "select-area", area_label, area_supported, None::<&str>)?;
                 let config_item = MenuItem::with_id(app, "config", "Abrir configuração", true, None::<&str>)?;
                 let reload_item = MenuItem::with_id(app, "reload-config", "Recarregar configuração", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&toggle_item, &config_item, &reload_item, &quit_item])?;
+                let menu = Menu::with_items(app, &[&toggle_item, &area_item, &config_item, &reload_item, &quit_item])?;
 
                 TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())
@@ -378,6 +530,7 @@ pub fn run() {
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id().as_ref() {
                         "toggle" => toggle_main_window(app),
+                        "select-area" => start_area_selection(app),
                         "config" => open_config_file(app),
                         "reload-config" => reload_configuration(app),
                         "quit" => app.exit(0),
@@ -399,7 +552,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let startup_config = config::load();
                 apply_window_config(&window, &startup_config);
-                if startup_config.show_on_start {
+                if startup_config.show_on_start && !select_area_on_start {
                     if let Err(e) = window.show() {
                         eprintln!("[quicktrad] show() error: {e}");
                     }
@@ -428,6 +581,10 @@ pub fn run() {
                 });
             } else {
                 eprintln!("[quicktrad] main window NOT FOUND");
+            }
+
+            if select_area_on_start {
+                start_area_selection(&app.handle().clone());
             }
 
             Ok(())

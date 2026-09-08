@@ -24,11 +24,12 @@ via cargo puro.
 
 ## 2. Linux + Wayland nativo (KDE Plasma, GNOME, Hyprland, etc.): dois bugs de plataforma, já corrigidos em `main.rs`
 
-`src-tauri/src/main.rs` já seta duas env vars no início do `main()`,
-condicionadas a `target_os = "linux"` e só se o usuário não tiver definido a
-própria (`var_os(..).is_none()`) — não desfaça isso sem entender por quê:
+`src-tauri/src/main.rs` configura o backend antes de iniciar GTK/Tauri. A
+precedência é `GDK_BACKEND` explícito > `linux_backend` do `config.toml` >
+padrão `xwayland`. Não mova essa decisão para depois da criação da janela:
 
-- **`GDK_BACKEND=x11`** — sem isso, GTK3/webkit2gtk crasham com
+- **`linux_backend = "xwayland"` / `GDK_BACKEND=x11`** — sem isso,
+  GTK3/webkit2gtk podem crashar com
   `Gdk-Message: Error 71 (Protocol error) dispatching to Wayland display`
   assim que a janela tenta aparecer, sob Wayland nativo. Forçar XWayland
   evita o crash. Testado quebrando e sendo corrigido no KDE Plasma 6/Wayland;
@@ -40,6 +41,12 @@ própria (`var_os(..).is_none()`) — não desfaça isso sem entender por quê:
   gráfico + compositor). Only sintoma visível nos logs antes do fix: linhas
   tipo `Failed to create GBM buffer of size WxH: Invalid argument` — se você
   ver essas linhas, é este bug.
+
+`linux_backend = "wayland"` é uma escolha válida e explícita do usuário, mas
+nesse modo o compositor controla a posição global. Não prometa nem tente
+emular `window_position = "fixed"`: o menu deve indicar que a área fixa requer
+XWayland. `linux_backend = "auto"` deixa o GTK escolher. Em todos os casos uma
+env `GDK_BACKEND` fornecida pelo launcher vence o TOML.
 
 Se investigar um bug visual/crash novo no Linux, **rode o binário no
 terminal primeiro** (`quicktrad` sem redirecionar stderr) e leia a saída
@@ -144,6 +151,17 @@ esse fluxo multiplataforma, sem chamar Notepad/nvim por nome. Ao criar novos
 campos, mantenha compatibilidade com TOMLs antigos por meio de defaults. Os
 campos de tamanho e posição são aplicados antes de cada `show`; `show_on_start`
 naturalmente só vale no próximo início do processo.
+
+### Área fixa visual
+
+`Definir área fixa` abre a janela separada `area-selector`; nunca injete o
+seletor novamente na janela `main`. O seletor usa decoração e resize nativos,
+é incluído em `capabilities/default.json` e tem uma entrada própria no build
+multipágina do Vite. Ao salvar, `save_area_selection` lê sua posição externa e
+tamanho interno, persiste `window_position = "fixed"`, fecha o seletor e mostra
+o popup real no retângulo salvo. Cancelar/fechar não salva e restaura `main`.
+Em Wayland nativo o item fica desabilitado; suporte exato é Windows e
+X11/XWayland.
 
 ## 10. Ao testar mudanças de UI/janela, teste de verdade
 
