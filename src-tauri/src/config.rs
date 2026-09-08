@@ -21,6 +21,10 @@ pub struct AppConfig {
     /// o texto literal digitado, não só o total — ver README.
     #[serde(default)]
     pub save_history: bool,
+    /// Tamanho da fonte das áreas de texto da janela flutuante. Preferência
+    /// ajustada por atalho, sem acrescentar controles à UI minimalista.
+    #[serde(default = "default_font_size")]
+    pub font_size: u8,
 }
 
 fn default_provider() -> String {
@@ -49,6 +53,10 @@ fn default_libretranslate_url() -> String {
     "https://libretranslate.com/translate".into()
 }
 
+fn default_font_size() -> u8 {
+    14
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -58,6 +66,7 @@ impl Default for AppConfig {
             libretranslate_url: default_libretranslate_url(),
             api_keys: HashMap::new(),
             save_history: false,
+            font_size: default_font_size(),
         }
     }
 }
@@ -91,4 +100,14 @@ pub fn save(cfg: &AppConfig) -> Result<(), String> {
     let path = config_path();
     let contents = toml::to_string_pretty(cfg).map_err(|e| e.to_string())?;
     fs::write(path, contents).map_err(|e| e.to_string())
+}
+
+pub fn set_font_size(font_size: u8) -> Result<u8, String> {
+    // Limites conservadores: 12 px continua legível em telas densas e 28 px
+    // ainda preserva o layout compacto do popup.
+    let font_size = font_size.clamp(12, 28);
+    let mut cfg = load();
+    cfg.font_size = font_size;
+    save(&cfg)?;
+    Ok(font_size)
 }

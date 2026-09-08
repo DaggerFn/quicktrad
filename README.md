@@ -20,6 +20,16 @@ por dropdown; é definido por config ou por flag de CLI (abaixo) — a única
 UI de idioma é um badge pequeno centralizado na própria linha divisória
 ("PT → EN ⇄"), só pra você saber em que direção está traduzindo.
 
+### Tema do sistema e acessibilidade
+
+A janela segue automaticamente o tema claro/escuro do sistema no Windows,
+macOS e Linux; a troca é aplicada sem reiniciar o app. A mesma base também
+respeita alto contraste (`forced-colors`) e redução de animações. As cores da
+interface ficam em tokens CSS, enquanto `src/theme.ts` concentra a leitura do
+tema nativo do Tauri e o fallback web. Ajustes futuros exclusivos de uma
+plataforma — por exemplo, a cor de destaque do Windows — devem entrar pela
+extensão de tema, sem bifurcar a UI comum.
+
 ### `Tab`: inverter idioma em execução
 
 Com a janela aberta, `Tab` (ou clique no `⇄` do badge) inverte
@@ -36,6 +46,22 @@ precisar de nenhum elemento extra na UI. Não funciona com
 idioma foi detectado) — nesse caso mostra um erro pedindo pra definir a
 origem explicitamente.
 
+### Tamanho da fonte sem controles extras
+
+Com a janela flutuante focada, `Ctrl+Alt+Shift++` aumenta e
+`Ctrl+Alt+Shift+-` diminui a fonte das áreas de entrada e resultado. O ajuste
+vai de 12 a 28 px, em passos de 1 px, e fica salvo no `config.toml`; ele não
+adiciona botões nem menus à UI. O `+` também funciona no teclado numérico.
+
+### Monitor de abertura
+
+Ao mostrar a janela flutuante, o Quicktrad a centraliza na área útil do
+monitor que contém o cursor. Isso acompanha o monitor em que você está
+trabalhando sem inspecionar janelas de outros aplicativos, e funciona no
+Windows e Linux/X11 (inclusive no fluxo Linux atual que usa XWayland). Se a
+plataforma não disponibilizar a posição global do cursor, a janela mantém sua
+posição anterior em vez de pular para outro monitor.
+
 ## Como o atalho funciona em cada plataforma
 
 - **No Omarchy** (uso principal hoje): `Super+Shift+T` abre/fecha o **widget
@@ -49,9 +75,12 @@ origem explicitamente.
   `omarchy-shell <id> toggle` só repassa uma chamada IPC pro plugin já
   rodando dentro do Quickshell — não sobe processo novo.
 
-- **Windows / macOS / Linux X11** (sem barra Omarchy): a própria aplicação
-  registra `Super+Shift+T` como atalho global (via
-  `tauri-plugin-global-shortcut`) e abre a **janela flutuante**. Funciona
+- **Windows**: a própria aplicação registra `Ctrl+Alt+T` como atalho global
+  (via `tauri-plugin-global-shortcut`) e abre a **janela flutuante**.
+  `Super+Shift+T` não é usado no Windows porque é o atalho padrão do Text
+  Extractor do PowerToys e pode conflitar com ferramentas de captura.
+- **macOS / Linux X11** (sem barra Omarchy): a própria aplicação registra
+  `Super+Shift+T` como atalho global e abre a **janela flutuante**. Funciona
   sem configurar nada a mais.
 - **Outro Wayland/DE sem Quickshell** (GNOME, KDE): um app não pode
   capturar tecla globalmente sozinho — bind `quicktrad --toggle` no seu
@@ -69,6 +98,8 @@ plataforma que rode a janela flutuante.
 | Tecla | Onde | Ação |
 |---|---|---|
 | `Super+Shift+T` | Omarchy (compositor) | Abre/fecha o widget da barra |
+| `Ctrl+Alt+T` | Windows | Abre/fecha a janela flutuante |
+| `Super+Shift+T` | macOS / Linux X11 | Abre/fecha a janela flutuante |
 | `Tab` | Dentro do widget da barra ou da janela flutuante, com o campo de texto focado | Inverte o par de idioma atual e retraduz |
 | Clique no `⇄` | Widget da barra | Mesma ação do `Tab`, via mouse |
 | `Esc` | Widget da barra ou janela flutuante | Fecha |

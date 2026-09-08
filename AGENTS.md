@@ -68,10 +68,15 @@ sudo pacman -S --needed rust libappindicator-gtk3
 padrão — só confira com `pacman -Q webkit2gtk-4.1 gtk3` antes de assumir que
 falta.
 
-## 5. Atalho global: cada compositor Wayland é um caso, não tem solução única no app
+## 5. Atalho global: cada plataforma tem seu próprio caso
 
-O app tenta registrar `Super+Shift+T` sozinho via
-`tauri-plugin-global-shortcut` (funciona de verdade em Windows/macOS/X11).
+O app registra `Ctrl+Alt+T` no **Windows** e `Super+Shift+T` no macOS/Linux
+X11 via `tauri-plugin-global-shortcut`. Não troque o atalho do Windows de
+volta para `Super+Shift+T`: ele é o padrão do Text Extractor do PowerToys e,
+num teste real nesta máquina, também acionava a sobreposição da Ferramenta de
+Captura mesmo com o módulo do PowerToys desligado. `Ctrl+Alt+T` evita essa
+família de conflitos com atalhos que usam a tecla Windows.
+
 Em **qualquer** Wayland (KDE, GNOME, Hyprland puro) isso falha silenciosamente
 por design do protocolo — é esperado, não é bug, o código já trata isso com
 um `eprintln!` de aviso em vez de crashar. A solução é sempre bindar
@@ -92,7 +97,39 @@ um `eprintln!` de aviso em vez de crashar. A solução é sempre bindar
   "AppIndicator and KStatusNotifierItem Support". Não é bug do app, não dá
   pra corrigir em código.
 
-## 6. Ao testar mudanças de UI/janela, teste de verdade
+## 6. Tema do sistema: uma base comum, extensões específicas só quando necessário
+
+Não reintroduza `color-scheme: dark` ou cores fixas como regra global. A UI
+segue o tema claro/escuro do sistema em `src/theme.ts`: Tauri fornece a
+notificação nativa quando disponível e `prefers-color-scheme` mantém o mesmo
+comportamento no Vite e nos demais sistemas. As cores ficam em tokens no
+`src/styles.css`, que também respeita `forced-colors` e redução de animações.
+
+Caso uma integração seja exclusiva de uma plataforma (ex.: cor de destaque do
+Windows), implemente-a como `ThemeExtension` em `src/theme.ts`; não bifurque a
+folha de estilos inteira nem mude o tema manualmente por padrão.
+
+## 7. Ajuste de fonte: atalhos locais, persistência no config e sem botões
+
+`Ctrl+Alt+Shift++` e `Ctrl+Alt+Shift+-` ajustam a fonte da **janela
+flutuante** entre 12 e 28 px. O frontend chama `set_font_size`, que faz o
+clamp e persiste em `AppConfig.font_size`; não use `localStorage` nem adicione
+controles à UI para essa preferência. Mantenha os binds locais à janela para
+não disputar atalhos globais do Windows/DE. O giro do botão `⇄` deve ser uma
+volta completa, não 180°, pois o símbolo é visualmente simétrico na metade da
+rotação. A transição roda por Web Animations API antes/depois da inversão, não
+por uma regra CSS genérica que possa ser anulada pelo `prefers-reduced-motion`.
+
+## 8. Monitor de abertura: seguir o cursor sem dependência do compositor
+
+`move_to_cursor_monitor` centraliza a janela no monitor que contém o cursor
+antes de cada `show`. É a alternativa portátil ao monitor da janela ativa:
+não precisa inspecionar outros aplicativos e funciona no Windows e Linux/X11.
+Não troque por APIs de janela ativa específicas de um SO sem criar um adapter;
+em plataformas que não expõem cursor global, o fallback correto é manter a
+posição atual.
+
+## 9. Ao testar mudanças de UI/janela, teste de verdade
 
 Rodar `quicktrad` no terminal deste ambiente mostra a janela na tela real do
 usuário (não é um sandbox isolado) — então dá pra validar visualmente pedindo

@@ -3,7 +3,7 @@ mod translation;
 mod usage;
 
 use config::AppConfig;
-use tauri::{Emitter, Manager, WindowEvent};
+use tauri::{Emitter, Manager, PhysicalPosition, WindowEvent};
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -13,6 +13,7 @@ fn toggle_main_window(app: &tauri::AppHandle) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
+            move_to_cursor_monitor(&window);
             let _ = window.show();
             let _ = window.set_focus();
         }
@@ -21,9 +22,33 @@ fn toggle_main_window(app: &tauri::AppHandle) {
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
+        move_to_cursor_monitor(&window);
         let _ = window.show();
         let _ = window.set_focus();
     }
+}
+
+/// Posiciona o popup no centro da área útil do monitor que contém o cursor.
+/// É uma aproximação portátil do "monitor da janela ativa": normalmente o
+/// cursor já está sobre ela, mas não precisamos de permissões para inspecionar
+/// janelas de outros apps. Funciona em Windows e Linux/X11; se a plataforma não
+/// expuser a posição global do cursor, falha silenciosamente e mantém a posição
+/// atual em vez de deslocar a janela para um monitor arbitrário.
+fn move_to_cursor_monitor(window: &tauri::WebviewWindow) {
+    let Ok(cursor) = window.cursor_position() else {
+        return;
+    };
+    let Ok(Some(monitor)) = window.monitor_from_point(cursor.x, cursor.y) else {
+        return;
+    };
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+
+    let work_area = monitor.work_area();
+    let x = work_area.position.x + (work_area.size.width.saturating_sub(size.width) / 2) as i32;
+    let y = work_area.position.y + (work_area.size.height.saturating_sub(size.height) / 2) as i32;
+    let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
 /// Códigos de idioma aceitos como flag de linha de comando, ex:
@@ -114,6 +139,11 @@ fn swap_languages() -> Result<AppConfig, String> {
 #[tauri::command]
 fn set_config(cfg: AppConfig) -> Result<(), String> {
     config::save(&cfg)
+}
+
+#[tauri::command]
+fn set_font_size(font_size: u8) -> Result<u8, String> {
+    config::set_font_size(font_size)
 }
 
 #[tauri::command]
@@ -222,6 +252,7 @@ pub fn run() {
             translate,
             get_config,
             set_config,
+            set_font_size,
             swap_languages,
             hide_window
         ]);
@@ -242,14 +273,20 @@ pub fn run() {
     builder
         .setup(|app| {
             // Atalho global de verdade: funciona direto no Windows, macOS e
-            // Linux/X11. Em Wayland (Hyprland/GNOME/KDE) o registro tende a
-            // falhar silenciosamente por design da plataforma — nesse caso o
-            // usuário deve bindar a tecla no compositor chamando
-            // `quicktrad --toggle` (ver README).
+            // Linux/X11. No Windows não usamos Super+Shift+T: é o atalho
+            // padrão do Text Extractor do PowerToys e pode ser remapeado para
+            // a Ferramenta de Captura por outros utilitários. Em Wayland
+            // (Hyprland/GNOME/KDE) o registro tende a falhar silenciosamente
+            // por design da plataforma — nesse caso o usuário deve bindar a
+            // tecla no compositor chamando `quicktrad --toggle` (ver README).
             apply_lang_args(&app.handle().clone(), &std::env::args().collect::<Vec<_>>());
 
             #[cfg(desktop)]
             {
+                #[cfg(target_os = "windows")]
+                let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyT);
+
+                #[cfg(not(target_os = "windows"))]
                 let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyT);
                 if let Err(e) = app.global_shortcut().register(shortcut) {
                     eprintln!(
@@ -292,6 +329,7 @@ pub fn run() {
             }
 
             if let Some(window) = app.get_webview_window("main") {
+                move_to_cursor_monitor(&window);
                 if let Err(e) = window.show() {
                     eprintln!("[quicktrad] show() error: {e}");
                 }

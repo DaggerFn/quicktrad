@@ -1,12 +1,36 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --bg: #f7f8fa;
+  --border: #0f6cbd;
+  --focus: #005fb8;
+  --text: #1b1b1f;
+  --text-dim: #5f6368;
+  --error: #c42b1c;
+  --content-font-size: 14px;
+  --font-ui: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-content: "Cascadia Mono", "JetBrains Mono", "Fira Code", ui-monospace,
+    SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root[data-theme="dark"] {
   --bg: #0a0d11;
-  --border: #3ddc84;
+  --border: #4cc2ff;
+  --focus: #80d4ff;
   --text: #e6edf3;
-  --text-dim: #565f66;
-  --error: #e5534b;
-  --mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo,
-    Consolas, monospace;
+  --text-dim: #9da6b5;
+  --error: #ff9b90;
+}
+
+/* Evita um flash claro antes de theme.ts sincronizar a preferência do sistema. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #0a0d11;
+    --border: #4cc2ff;
+    --focus: #80d4ff;
+    --text: #e6edf3;
+    --text-dim: #9da6b5;
+    --error: #ff9b90;
+  }
 }
 
 * {
@@ -26,7 +50,7 @@ body {
   flex-direction: column;
   background: var(--bg);
   border: 1px solid var(--border);
-  font-family: var(--mono);
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -38,8 +62,8 @@ body {
   min-height: 0;
   padding: 8px 10px;
   color: var(--text);
-  font-family: var(--mono);
-  font-size: 14px;
+  font-family: var(--font-content);
+  font-size: var(--content-font-size);
   line-height: 1.4;
   white-space: pre-wrap;
   overflow-y: auto;
@@ -50,6 +74,11 @@ body {
   border: none;
   outline: none;
   resize: none;
+}
+
+#input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 #input::placeholder {
@@ -74,8 +103,8 @@ body {
   padding: 1px 8px;
   background: var(--bg);
   color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: 10px;
+  font-family: var(--font-ui);
+  font-size: calc(var(--content-font-size) * 0.72);
   font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -87,7 +116,7 @@ body {
   cursor: pointer;
   display: inline-flex;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: calc(var(--content-font-size) * 0.8);
   line-height: 1;
 }
 
@@ -108,11 +137,14 @@ body {
 }
 
 @keyframes lang-arrow-spin {
-  from {
-    transform: rotate(0deg);
+  0% {
+    transform: rotate(0deg) scale(1);
   }
-  to {
-    transform: rotate(180deg);
+  45% {
+    transform: rotate(180deg) scale(1.22);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
   }
 }
 
@@ -121,7 +153,7 @@ body {
 }
 
 .lang-pill.flash #swap-btn {
-  animation: lang-pill-flash 420ms ease-out, lang-arrow-spin 420ms ease-out;
+  animation: lang-pill-flash 420ms ease-out, lang-arrow-spin 460ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #result.placeholder {
@@ -130,4 +162,26 @@ body {
 
 #result.error {
   color: var(--error);
+}
+
+/* Respeita o modo de alto contraste, especialmente relevante no Windows. */
+@media (forced-colors: active) {
+  :root {
+    --bg: Canvas;
+    --border: CanvasText;
+    --focus: Highlight;
+    --text: CanvasText;
+    --text-dim: GrayText;
+    --error: Mark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }

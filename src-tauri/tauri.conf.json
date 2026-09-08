@@ -15,8 +15,8 @@
       {
         "label": "main",
         "title": "quicktrad",
-        "width": 420,
-        "height": 160,
+        "width": 520,
+        "height": 240,
         "resizable": false,
         "decorations": false,
         "transparent": false,
