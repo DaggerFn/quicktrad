@@ -104,6 +104,60 @@ plataforma que rode a janela flutuante.
 | Clique no `⇄` | Widget da barra | Mesma ação do `Tab`, via mouse |
 | `Esc` | Widget da barra ou janela flutuante | Fecha |
 
+## Arquivo de configuração
+
+O Quicktrad usa um único `config.toml`: `%APPDATA%\quicktrad\config.toml`
+no Windows e `~/.config/quicktrad/config.toml` em Linux/macOS. Ele é criado
+na primeira execução. Para abrir sem procurar a pasta, clique com o botão
+direito no ícone da bandeja e selecione **Abrir configuração**; o sistema o
+abre no editor associado a arquivos TOML/texto (por exemplo, Notepad no
+Windows ou o editor padrão definido no Linux). Depois de salvar, escolha
+**Recarregar configuração** no mesmo menu, ou feche e abra o popup de novo.
+
+As opções que podem ser ajustadas hoje são:
+
+| Chave | Padrão | Efeito |
+|---|---:|---|
+| `provider` | `"deepl"` | Motor de tradução: `deepl`, `mymemory`, `libretranslate` ou `google`. |
+| `source_lang` / `target_lang` | `"pt"` / `"en"` | Idioma de origem e destino. `auto` só pode ser usado na origem por provedores compatíveis. |
+| `api_keys` | vazio | Chaves por provedor, como `api_keys.deepl`. |
+| `libretranslate_url` | URL pública do LibreTranslate | Endpoint da instância LibreTranslate. |
+| `save_history` | `false` | Grava o histórico local de uso e texto em SQLite. |
+| `font_size` | `14` | Fonte das duas áreas de texto, de 12 a 28 px. |
+| `window_width` / `window_height` | `520` / `240` | Tamanho do popup em pixels lógicos; aceitos de 320–2400 × 180–1600. |
+| `window_position` | `"cursor_monitor"` | `cursor_monitor`, `primary_monitor` ou `fixed`. |
+| `window_x` / `window_y` | ausente | Coordenadas físicas no desktop virtual, usadas apenas com `fixed`; podem ser negativas em monitor à esquerda/acima do principal. |
+| `always_on_top` | `true` | Mantém o popup sobre as outras janelas quando está aberto. |
+| `hide_on_blur` | `true` | Esconde o popup quando ele perde foco. |
+| `show_on_start` | `true` | Com `false`, inicia somente na bandeja até receber atalho, menu ou `quicktrad --toggle`. |
+
+Exemplo completo, já com os valores padrão da janela:
+
+```toml
+provider = "deepl"
+source_lang = "pt"
+target_lang = "en"
+libretranslate_url = "https://libretranslate.com/translate"
+save_history = false
+
+font_size = 14
+window_width = 520
+window_height = 240
+window_position = "cursor_monitor" # cursor_monitor | primary_monitor | fixed
+# window_x = 120                    # obrigatórios em pares para "fixed"
+# window_y = 80
+always_on_top = true
+hide_on_blur = true
+show_on_start = true
+
+[api_keys]
+deepl = "sua-chave-aqui:fx"
+```
+
+As preferências da janela são reaplicadas em toda abertura. Fonte, idiomas e
+tamanho também entram em vigor ao usar **Recarregar configuração**. Alterar
+`show_on_start` só tem efeito no próximo início do processo.
+
 ## Configuração inicial: chave da DeepL
 
 O provedor oficial é a **DeepL** — motor neural de verdade (não um
@@ -124,6 +178,13 @@ source_lang = "pt"
 target_lang = "en"
 libretranslate_url = "https://libretranslate.com/translate"
 save_history = false    # true grava cada texto digitado num sqlite local, ver seção própria abaixo
+font_size = 14
+window_width = 520
+window_height = 240
+window_position = "cursor_monitor"
+always_on_top = true
+hide_on_blur = true
+show_on_start = true
 
 [api_keys]
 deepl = "sua-chave-aqui:fx"

@@ -2,8 +2,9 @@ mod config;
 mod translation;
 mod usage;
 
-use config::AppConfig;
-use tauri::{Emitter, Manager, PhysicalPosition, WindowEvent};
+use config::{AppConfig, WindowPosition};
+use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WindowEvent};
+use tauri_plugin_opener::OpenerExt;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -13,7 +14,7 @@ fn toggle_main_window(app: &tauri::AppHandle) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            move_to_cursor_monitor(&window);
+            apply_window_config(&window, &config::load());
             let _ = window.show();
             let _ = window.set_focus();
         }
@@ -22,9 +23,72 @@ fn toggle_main_window(app: &tauri::AppHandle) {
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        move_to_cursor_monitor(&window);
+        apply_window_config(&window, &config::load());
         let _ = window.show();
         let _ = window.set_focus();
+    }
+}
+
+/// Aplica as preferências que pertencem à janela. Essa função roda antes de
+/// toda abertura, então editar o arquivo e abrir o popup novamente já basta
+/// para tamanho, posição e "sempre no topo" entrarem em vigor.
+fn apply_window_config(window: &tauri::WebviewWindow, cfg: &AppConfig) {
+    // Limites evitam que um erro manual no TOML produza uma janela invisível
+    // ou maior que um desktop comum. São pixels lógicos, portanto adaptam-se
+    // corretamente a escalonamento/DPI.
+    let width = cfg.window_width.clamp(320, 2_400);
+    let height = cfg.window_height.clamp(180, 1_600);
+    let _ = window.set_size(LogicalSize::new(width as f64, height as f64));
+    let _ = window.set_always_on_top(cfg.always_on_top);
+
+    match cfg.window_position {
+        WindowPosition::CursorMonitor => move_to_cursor_monitor(window),
+        WindowPosition::PrimaryMonitor => move_to_primary_monitor(window),
+        WindowPosition::Fixed => {
+            if let (Some(x), Some(y)) = (cfg.window_x, cfg.window_y) {
+                let _ = window.set_position(PhysicalPosition::new(x, y));
+            } else {
+                // Um modo fixed sem as duas coordenadas não deve fazer o
+                // popup "sumir"; usa o comportamento seguro padrão.
+                move_to_cursor_monitor(window);
+            }
+        }
+    }
+}
+
+fn move_to_primary_monitor(window: &tauri::WebviewWindow) {
+    let Ok(Some(monitor)) = window.primary_monitor() else {
+        return;
+    };
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+
+    let work_area = monitor.work_area();
+    let x = work_area.position.x + (work_area.size.width.saturating_sub(size.width) / 2) as i32;
+    let y = work_area.position.y + (work_area.size.height.saturating_sub(size.height) / 2) as i32;
+    let _ = window.set_position(PhysicalPosition::new(x, y));
+}
+
+fn open_config_file(app: &tauri::AppHandle) {
+    match config::prepare_for_editing() {
+        Ok(path) => {
+            if let Err(e) = app
+                .opener()
+                .open_path(path.to_string_lossy().into_owned(), None::<&str>)
+            {
+                eprintln!("[quicktrad] Não foi possível abrir o config.toml: {e}");
+            }
+        }
+        Err(e) => eprintln!("[quicktrad] Não foi possível preparar o config.toml: {e}"),
+    }
+}
+
+fn reload_configuration(app: &tauri::AppHandle) {
+    let cfg = config::load();
+    if let Some(window) = app.get_webview_window("main") {
+        apply_window_config(&window, &cfg);
+        let _ = window.emit("config-updated", ());
     }
 }
 
@@ -302,8 +366,10 @@ pub fn run() {
                 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
                 let toggle_item = MenuItem::with_id(app, "toggle", "Mostrar/Ocultar", true, None::<&str>)?;
+                let config_item = MenuItem::with_id(app, "config", "Abrir configuração", true, None::<&str>)?;
+                let reload_item = MenuItem::with_id(app, "reload-config", "Recarregar configuração", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+                let menu = Menu::with_items(app, &[&toggle_item, &config_item, &reload_item, &quit_item])?;
 
                 TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())
@@ -312,6 +378,8 @@ pub fn run() {
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id().as_ref() {
                         "toggle" => toggle_main_window(app),
+                        "config" => open_config_file(app),
+                        "reload-config" => reload_configuration(app),
                         "quit" => app.exit(0),
                         _ => {}
                     })
@@ -329,12 +397,15 @@ pub fn run() {
             }
 
             if let Some(window) = app.get_webview_window("main") {
-                move_to_cursor_monitor(&window);
-                if let Err(e) = window.show() {
-                    eprintln!("[quicktrad] show() error: {e}");
-                }
-                if let Err(e) = window.set_focus() {
-                    eprintln!("[quicktrad] set_focus() error: {e}");
+                let startup_config = config::load();
+                apply_window_config(&window, &startup_config);
+                if startup_config.show_on_start {
+                    if let Err(e) = window.show() {
+                        eprintln!("[quicktrad] show() error: {e}");
+                    }
+                    if let Err(e) = window.set_focus() {
+                        eprintln!("[quicktrad] set_focus() error: {e}");
+                    }
                 }
 
                 // A janela nasce sem foco e só recebe `Focused(true)` um instante
@@ -347,7 +418,9 @@ pub fn run() {
                         has_focused.store(true, std::sync::atomic::Ordering::SeqCst);
                     }
                     WindowEvent::Focused(false) => {
-                        if has_focused.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                        if has_focused.swap(false, std::sync::atomic::Ordering::SeqCst)
+                            && config::load().hide_on_blur
+                        {
                             let _ = hide_target.hide();
                         }
                     }

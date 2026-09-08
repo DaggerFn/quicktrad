@@ -129,7 +129,23 @@ Não troque por APIs de janela ativa específicas de um SO sem criar um adapter;
 em plataformas que não expõem cursor global, o fallback correto é manter a
 posição atual.
 
-## 9. Ao testar mudanças de UI/janela, teste de verdade
+## 9. Configuração do usuário: `config.toml` é a fonte de verdade
+
+O arquivo fica em `%APPDATA%\\quicktrad\\config.toml` no Windows e
+`~/.config/quicktrad/config.toml` em Linux/macOS. Não duplique preferências
+persistentes em `localStorage`, `tauri.conf.json` ou arquivos por plataforma:
+adicione o campo com `#[serde(default = ...)]` a `AppConfig` em
+`src-tauri/src/config.rs`, documente no README e faça o frontend receber a
+mudança por `config-updated` quando necessário.
+
+O item **Abrir configuração** da bandeja chama o editor associado pelo SO;
+**Recarregar configuração** aplica os valores à janela em execução. Preserve
+esse fluxo multiplataforma, sem chamar Notepad/nvim por nome. Ao criar novos
+campos, mantenha compatibilidade com TOMLs antigos por meio de defaults. Os
+campos de tamanho e posição são aplicados antes de cada `show`; `show_on_start`
+naturalmente só vale no próximo início do processo.
+
+## 10. Ao testar mudanças de UI/janela, teste de verdade
 
 Rodar `quicktrad` no terminal deste ambiente mostra a janela na tela real do
 usuário (não é um sandbox isolado) — então dá pra validar visualmente pedindo

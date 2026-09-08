@@ -25,6 +25,44 @@ pub struct AppConfig {
     /// ajustada por atalho, sem acrescentar controles à UI minimalista.
     #[serde(default = "default_font_size")]
     pub font_size: u8,
+    /// Largura da janela em pixels lógicos. Mantemos isso no arquivo, em vez
+    /// de no `tauri.conf.json`, para cada usuário poder adaptar ao monitor.
+    #[serde(default = "default_window_width")]
+    pub window_width: u32,
+    /// Altura da janela em pixels lógicos.
+    #[serde(default = "default_window_height")]
+    pub window_height: u32,
+    /// Onde centralizar o popup a cada abertura. `cursor_monitor` é o padrão
+    /// porque acompanha naturalmente o monitor em que a pessoa trabalha.
+    #[serde(default)]
+    pub window_position: WindowPosition,
+    /// Coordenada X física no desktop virtual, usada somente por
+    /// `window_position = "fixed"`.
+    #[serde(default)]
+    pub window_x: Option<i32>,
+    /// Coordenada Y física no desktop virtual, usada somente por
+    /// `window_position = "fixed"`.
+    #[serde(default)]
+    pub window_y: Option<i32>,
+    /// Mantém o popup acima das outras janelas enquanto ele está visível.
+    #[serde(default = "default_always_on_top")]
+    pub always_on_top: bool,
+    /// Esconde o popup ao perder foco, sem encerrar o processo da bandeja.
+    #[serde(default = "default_hide_on_blur")]
+    pub hide_on_blur: bool,
+    /// Mostra a janela já no início do processo. `false` inicia apenas na
+    /// bandeja e espera o atalho global, o menu ou `quicktrad --toggle`.
+    #[serde(default = "default_show_on_start")]
+    pub show_on_start: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WindowPosition {
+    #[default]
+    CursorMonitor,
+    PrimaryMonitor,
+    Fixed,
 }
 
 fn default_provider() -> String {
@@ -57,6 +95,26 @@ fn default_font_size() -> u8 {
     14
 }
 
+fn default_window_width() -> u32 {
+    520
+}
+
+fn default_window_height() -> u32 {
+    240
+}
+
+fn default_always_on_top() -> bool {
+    true
+}
+
+fn default_hide_on_blur() -> bool {
+    true
+}
+
+fn default_show_on_start() -> bool {
+    true
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -67,6 +125,14 @@ impl Default for AppConfig {
             api_keys: HashMap::new(),
             save_history: false,
             font_size: default_font_size(),
+            window_width: default_window_width(),
+            window_height: default_window_height(),
+            window_position: WindowPosition::default(),
+            window_x: None,
+            window_y: None,
+            always_on_top: default_always_on_top(),
+            hide_on_blur: default_hide_on_blur(),
+            show_on_start: default_show_on_start(),
         }
     }
 }
@@ -78,7 +144,7 @@ pub fn config_dir() -> PathBuf {
     dir
 }
 
-fn config_path() -> PathBuf {
+pub fn config_path() -> PathBuf {
     let mut dir = config_dir();
     dir.push("config.toml");
     dir
@@ -100,6 +166,16 @@ pub fn save(cfg: &AppConfig) -> Result<(), String> {
     let path = config_path();
     let contents = toml::to_string_pretty(cfg).map_err(|e| e.to_string())?;
     fs::write(path, contents).map_err(|e| e.to_string())
+}
+
+/// Garante que o arquivo exista e o regrava com o esquema atual. É chamado
+/// apenas ao abrir pelo menu, assim novos campos aparecem para instalações
+/// antigas sem regravar o TOML a cada tradução.
+pub fn prepare_for_editing() -> Result<PathBuf, String> {
+    let path = config_path();
+    let cfg = load();
+    save(&cfg)?;
+    Ok(path)
 }
 
 pub fn set_font_size(font_size: u8) -> Result<u8, String> {
