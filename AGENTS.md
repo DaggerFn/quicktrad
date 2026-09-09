@@ -147,10 +147,14 @@ mudança por `config-updated` quando necessário.
 
 O item **Abrir configuração** da bandeja chama o editor associado pelo SO;
 **Recarregar configuração** aplica os valores à janela em execução. Preserve
-esse fluxo multiplataforma, sem chamar Notepad/nvim por nome. Ao criar novos
-campos, mantenha compatibilidade com TOMLs antigos por meio de defaults. Os
-campos de tamanho e posição são aplicados antes de cada `show`; `show_on_start`
-naturalmente só vale no próximo início do processo.
+esse fluxo multiplataforma, sem chamar Notepad/nvim por nome. No Linux,
+quando disponível, o app tenta usar lançadores do ambiente (como
+`omarchy-launch-editor`) antes do fallback pro opener/xdg-open padrão para
+garantir que editores baseados em terminal (TUI como Neovim/Helix) abram dentro
+de uma janela de terminal apropriada em vez de rodarem invisíveis em segundo
+plano. Ao criar novos campos, mantenha compatibilidade com TOMLs antigos por
+meio de defaults. Os campos de tamanho e posição são aplicados antes de cada
+`show`; `show_on_start` naturalmente só vale no próximo início do processo.
 
 ### Área fixa visual
 

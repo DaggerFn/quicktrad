@@ -108,6 +108,17 @@ fn move_to_primary_monitor(window: &tauri::WebviewWindow) {
 fn open_config_file(app: &tauri::AppHandle) {
     match config::prepare_for_editing() {
         Ok(path) => {
+            #[cfg(target_os = "linux")]
+            {
+                if std::process::Command::new("omarchy-launch-editor")
+                    .arg(&path)
+                    .spawn()
+                    .is_ok()
+                {
+                    return;
+                }
+            }
+
             if let Err(e) = app
                 .opener()
                 .open_path(path.to_string_lossy().into_owned(), None::<&str>)
