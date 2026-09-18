@@ -159,6 +159,19 @@ pub fn reload_normalizer() {
     }
 }
 
+pub fn replacements_path() -> std::path::PathBuf {
+    config::config_dir().join("replacements.toml")
+}
+
+pub fn prepare_replacements_for_editing() -> Result<std::path::PathBuf, String> {
+    let path = replacements_path();
+    if !path.is_file() {
+        fs::write(&path, DEFAULT_REPLACEMENTS_TOML)
+            .map_err(|e| format!("Não foi possível inicializar {}: {e}", path.display()))?;
+    }
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

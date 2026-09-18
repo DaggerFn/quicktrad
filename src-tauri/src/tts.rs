@@ -246,13 +246,17 @@ impl TtsManager {
             return Ok(());
         }
 
-        let normalized = crate::normalizer::normalize_text(trimmed, lang);
-        let final_text = if normalized.is_empty() { trimmed } else { &normalized };
-
         let cfg = config::load();
         if !cfg.tts.enabled {
             return Err("Text-to-Speech está desativado no config.toml".into());
         }
+
+        let normalized = if cfg.tts.normalize_abbreviations {
+            crate::normalizer::normalize_text(trimmed, lang)
+        } else {
+            trimmed.to_string()
+        };
+        let final_text = if normalized.is_empty() { trimmed } else { &normalized };
 
         let voice_name = resolve_voice_for_lang(&cfg, lang);
         let piper_bin = find_piper_executable(&cfg)?;

@@ -173,6 +173,7 @@ As opções que podem ser ajustadas hoje são:
 | `hide_on_blur` | `true` | Esconde o popup quando ele perde foco. |
 | `show_on_start` | `true` | Com `false`, inicia somente na bandeja até receber atalho, menu ou `quicktrad --toggle`. |
 | `linux_backend` | `"xwayland"` | Linux: `xwayland`, `wayland` ou `auto`. Posição fixa só é garantida em X11/XWayland. |
+| `tts.normalize_abbreviations` | `true` | Ativa ou desativa a expansão automática de gírias e abreviações via `replacements.toml`. |
 
 Exemplo completo, já com os valores padrão da janela:
 
@@ -201,7 +202,8 @@ deepl = "sua-chave-aqui:fx"
 enabled = true
 auto_speak = false # se true, lê a tradução automaticamente assim que pronta
 piper_path = "piper" # ou caminho para o executável se fora do PATH
-speed = 1.0
+speed = 0.94
+normalize_abbreviations = true # expansão de gírias e acrônimos do replacements.toml
 
 [tts.voices]
 pt = "pt_BR-faber-medium"

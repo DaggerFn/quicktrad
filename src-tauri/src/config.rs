@@ -76,6 +76,8 @@ pub struct TtsConfig {
     pub voices_dir: String,
     #[serde(default = "default_tts_speed")]
     pub speed: f32,
+    #[serde(default = "default_tts_normalize_abbreviations")]
+    pub normalize_abbreviations: bool,
     #[serde(default = "default_shortcut_speak_result")]
     pub shortcut_speak_result: String,
     #[serde(default = "default_shortcut_speak_input")]
@@ -104,6 +106,9 @@ fn default_tts_speed() -> f32 {
     0.94
 }
 
+fn default_tts_normalize_abbreviations() -> bool {
+    true
+}
 
 fn default_shortcut_speak_result() -> String {
     "Ctrl+R".into()
@@ -128,6 +133,7 @@ impl Default for TtsConfig {
             piper_path: default_tts_piper_path(),
             voices_dir: default_tts_voices_dir(),
             speed: default_tts_speed(),
+            normalize_abbreviations: default_tts_normalize_abbreviations(),
             shortcut_speak_result: default_shortcut_speak_result(),
             shortcut_speak_input: default_shortcut_speak_input(),
             voices: default_tts_voices(),

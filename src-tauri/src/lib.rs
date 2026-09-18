@@ -132,6 +132,31 @@ fn open_config_file(app: &tauri::AppHandle) {
     }
 }
 
+fn open_replacements_file(app: &tauri::AppHandle) {
+    match normalizer::prepare_replacements_for_editing() {
+        Ok(path) => {
+            #[cfg(target_os = "linux")]
+            {
+                if std::process::Command::new("omarchy-launch-editor")
+                    .arg(&path)
+                    .spawn()
+                    .is_ok()
+                {
+                    return;
+                }
+            }
+
+            if let Err(e) = app
+                .opener()
+                .open_path(path.to_string_lossy().into_owned(), None::<&str>)
+            {
+                eprintln!("[quicktrad] Não foi possível abrir o replacements.toml: {e}");
+            }
+        }
+        Err(e) => eprintln!("[quicktrad] Não foi possível preparar o replacements.toml: {e}"),
+    }
+}
+
 fn reload_configuration(app: &tauri::AppHandle) {
     let cfg = config::load();
     normalizer::reload_normalizer();
@@ -593,9 +618,13 @@ pub fn run() {
                 };
                 let area_item = MenuItem::with_id(app, "select-area", area_label, area_supported, None::<&str>)?;
                 let config_item = MenuItem::with_id(app, "config", "Abrir configuração", true, None::<&str>)?;
+                let replacements_item = MenuItem::with_id(app, "replacements", "Abrir abreviações", true, None::<&str>)?;
                 let reload_item = MenuItem::with_id(app, "reload-config", "Recarregar configuração", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&toggle_item, &area_item, &config_item, &reload_item, &quit_item])?;
+                let menu = Menu::with_items(
+                    app,
+                    &[&toggle_item, &area_item, &config_item, &replacements_item, &reload_item, &quit_item],
+                )?;
 
                 TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())
@@ -606,6 +635,7 @@ pub fn run() {
                         "toggle" => toggle_main_window(app),
                         "select-area" => start_area_selection(app),
                         "config" => open_config_file(app),
+                        "replacements" => open_replacements_file(app),
                         "reload-config" => reload_configuration(app),
                         "quit" => app.exit(0),
                         _ => {}
