@@ -173,6 +173,7 @@ As opções que podem ser ajustadas hoje são:
 | `hide_on_blur` | `true` | Esconde o popup quando ele perde foco. |
 | `show_on_start` | `true` | Com `false`, inicia somente na bandeja até receber atalho, menu ou `quicktrad --toggle`. |
 | `linux_backend` | `"xwayland"` | Linux: `xwayland`, `wayland` ou `auto`. Posição fixa só é garantida em X11/XWayland. |
+| `tts.enabled` | `false` | Ativa a síntese de voz local (Piper TTS via CPU). Desativado por padrão para economizar RAM (0 MB overhead). Ao ativar, exibe os botões de reprodução na janela e barra. |
 | `tts.normalize_abbreviations` | `true` | Ativa ou desativa a expansão automática de gírias e abreviações via `replacements.toml`. |
 
 Exemplo completo, já com os valores padrão da janela:
@@ -199,7 +200,7 @@ linux_backend = "xwayland" # Linux: xwayland | wayland | auto
 deepl = "sua-chave-aqui:fx"
 
 [tts]
-enabled = true
+enabled = false # mude para true para ativar leitura em voz alta (economiza RAM quando desligado)
 auto_speak = false # se true, lê a tradução automaticamente assim que pronta
 piper_path = "piper" # ou caminho para o executável se fora do PATH
 speed = 0.94

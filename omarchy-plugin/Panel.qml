@@ -26,6 +26,7 @@ Panel {
   property int querySeq: 0
   property bool pillFlash: false
   property bool speaking: false
+  property bool ttsEnabled: false
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -35,6 +36,7 @@ Panel {
     if (parts.length < 2) return
     root.sourceLang = parts[0]
     root.targetLang = parts[1]
+    root.ttsEnabled = parts.length >= 3 ? (parts[2] === "tts") : false
   }
 
   function refreshStatus() {
@@ -254,7 +256,7 @@ Panel {
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
-            anchors.right: speakBtn.left
+            anchors.right: root.ttsEnabled ? speakBtn.left : swapBtn.left
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
 
@@ -263,12 +265,14 @@ Panel {
 
           Text {
             id: speakBtn
+            visible: root.ttsEnabled
+            width: root.ttsEnabled ? implicitWidth : 0
             text: "󰕾"
             color: root.speaking ? root.bar.foreground : Qt.darker(root.bar.foreground, 1.4)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.title
             anchors.right: swapBtn.left
-            anchors.rightMargin: Style.space(8)
+            anchors.rightMargin: root.ttsEnabled ? Style.space(8) : 0
             anchors.verticalCenter: parent.verticalCenter
             opacity: root.speaking ? 1.0 : 0.7
 

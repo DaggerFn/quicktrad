@@ -87,7 +87,7 @@ pub struct TtsConfig {
 }
 
 fn default_tts_enabled() -> bool {
-    true
+    false
 }
 
 fn default_tts_auto_speak() -> bool {

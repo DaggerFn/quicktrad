@@ -481,7 +481,12 @@ pub fn try_run_headless(args: &[String]) -> Option<i32> {
     if args.iter().any(|a| a == "--swap") {
         return Some(match swap_config() {
             Ok(cfg) => {
-                println!("{} {}", cfg.source_lang, cfg.target_lang);
+                println!(
+                    "{} {} {}",
+                    cfg.source_lang,
+                    cfg.target_lang,
+                    if cfg.tts.enabled { "tts" } else { "no-tts" }
+                );
                 0
             }
             Err(e) => {
@@ -493,7 +498,12 @@ pub fn try_run_headless(args: &[String]) -> Option<i32> {
 
     if args.iter().any(|a| a == "--status") {
         let cfg = config::load();
-        println!("{} {}", cfg.source_lang, cfg.target_lang);
+        println!(
+            "{} {} {}",
+            cfg.source_lang,
+            cfg.target_lang,
+            if cfg.tts.enabled { "tts" } else { "no-tts" }
+        );
         return Some(0);
     }
 
@@ -621,10 +631,15 @@ pub fn run() {
                 let replacements_item = MenuItem::with_id(app, "replacements", "Abrir abreviações", true, None::<&str>)?;
                 let reload_item = MenuItem::with_id(app, "reload-config", "Recarregar configuração", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-                let menu = Menu::with_items(
-                    app,
-                    &[&toggle_item, &area_item, &config_item, &replacements_item, &reload_item, &quit_item],
-                )?;
+                let cfg = config::load();
+                let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<tauri::Wry>> =
+                    vec![&toggle_item, &area_item, &config_item];
+                if cfg.tts.enabled {
+                    menu_items.push(&replacements_item);
+                }
+                menu_items.push(&reload_item);
+                menu_items.push(&quit_item);
+                let menu = Menu::with_items(app, &menu_items)?;
 
                 TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())

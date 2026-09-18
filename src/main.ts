@@ -40,6 +40,13 @@ function renderPill(cfg: AppConfig) {
   langTextEl().textContent = `${cfg.source_lang.toUpperCase()} → ${cfg.target_lang.toUpperCase()}`;
 }
 
+function renderTts(cfg: AppConfig) {
+  const btn = speakBtnEl();
+  if (btn) {
+    btn.style.display = cfg.tts?.enabled ? "" : "none";
+  }
+}
+
 // Reinicia a animação removendo e recolocando a classe num frame novo —
 // senão dois swaps seguidos não re-disparam a animação CSS.
 function renderFontSize(size: number) {
@@ -221,14 +228,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      void invoke("stop_tts");
+      if (currentConfig?.tts?.enabled) {
+        void invoke("stop_tts");
+      }
       void invoke("hide_window");
     } else if (e.ctrlKey && e.code === "KeyR") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        speakInput();
-      } else {
-        speakResult();
+      if (currentConfig?.tts?.enabled) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          speakInput();
+        } else {
+          speakResult();
+        }
       }
     } else if (
       e.ctrlKey &&
@@ -259,6 +270,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, cfg.font_size));
   renderFontSize(fontSize);
   renderPill(cfg);
+  renderTts(cfg);
 
   // Disparado pelo backend quando um novo par de idiomas chega via flag de
   // linha de comando (ex: outro bind do compositor invocou com --en --pt).
@@ -266,6 +278,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const updated = await invoke<AppConfig>("get_config");
     currentConfig = updated;
     renderPill(updated);
+    renderTts(updated);
     playPillPulse();
     if (inputEl().value.trim()) {
       void doTranslate();

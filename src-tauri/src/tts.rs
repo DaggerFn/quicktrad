@@ -248,7 +248,7 @@ impl TtsManager {
 
         let cfg = config::load();
         if !cfg.tts.enabled {
-            return Err("Text-to-Speech está desativado no config.toml".into());
+            return Err("Text-to-Speech está desativado no config.toml. Para ativar o leitor de voz neural, defina [tts] enabled = true.".into());
         }
 
         let normalized = if cfg.tts.normalize_abbreviations {
