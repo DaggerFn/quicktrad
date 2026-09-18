@@ -175,3 +175,15 @@ pro usuário olhar/printar a tela, mas **mate instâncias antigas antes**
 (`pkill -9 -f quicktrad`; o `tauri-plugin-single-instance` faz uma instância
 já rodando "engolir" a nova invocação via IPC, então testar sem matar a
 antiga faz parecer que nada mudou mesmo depois de recompilar).
+
+## 11. Text-to-Speech (Piper TTS) e reprodução de áudio (`rodio`)
+
+- **Thread de áudio dedicada (`AudioThread`)**: `rodio::OutputStream` não
+  implementa `Send` em plataformas Linux (ALSA/cpal). Por isso, **nunca** guarde
+  `rodio::OutputStream` dentro de structs compartilhadas entre threads assíncronas.
+  O `TtsManager` delega comandos de playback (`Play`, `Stop`) via canal `mpsc`
+  para uma thread dedicada (`AudioThread`).
+- **Warm cache dos modelos Piper**: os processos do Piper rodam com a flag
+  `--json-input`. Isso mantém os modelos ONNX na memória RAM (boot único) e
+  responde a frases em ~50-150ms. Nunca mate o processo a cada sentença.
+

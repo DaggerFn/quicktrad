@@ -100,9 +100,34 @@ plataforma que rode a janela flutuante.
 | `Super+Shift+T` | Omarchy (compositor) | Abre/fecha o widget da barra |
 | `Ctrl+Alt+T` | Windows | Abre/fecha a janela flutuante |
 | `Super+Shift+T` | macOS / Linux X11 | Abre/fecha a janela flutuante |
+| `Ctrl+R` | Janela flutuante ou barra Omarchy | Lê o texto traduzido via Piper TTS (voz de destino) |
+| `Ctrl+Shift+R` | Janela flutuante ou barra Omarchy | Lê o texto digitado via Piper TTS (voz de origem) |
+| Clique no `🔊` | Janela flutuante ou barra Omarchy | Lê/interrompe a fala da tradução |
 | `Tab` | Dentro do widget da barra ou da janela flutuante, com o campo de texto focado | Inverte o par de idioma atual e retraduz |
 | Clique no `⇄` | Widget da barra | Mesma ação do `Tab`, via mouse |
-| `Esc` | Widget da barra ou janela flutuante | Fecha |
+| `Esc` | Widget da barra ou janela flutuante | Fecha e interrompe o áudio imediatamente |
+
+## Text-to-Speech (Piper TTS)
+
+O Quicktrad conta com síntese de voz neural local de alta velocidade:
+- **Engine**: Piper TTS rodando exclusivamente em **CPU via ONNX Runtime** (0 MB de VRAM, ~50–150ms de latência após aquecimento do modelo).
+- **Modelos mantidos em memória RAM (warm cache)**: o modelo neural fica carregado em segundo plano, permitindo respostas de áudio instantâneas.
+- **Vozes padrão (HuggingFace `rhasspy/piper-voices`)**:
+  - Português (Brasil): `pt_BR-faber-medium` (~63 MB, 22050 Hz, mono).
+  - Inglês (US): `en_US-lessac-high` (~114 MB, 22050 Hz, mono).
+- **Auto-download**: se os modelos ainda não estiverem na pasta local (`~/.local/share/quicktrad/voices` no Linux ou `%APPDATA%\quicktrad\voices` no Windows), eles são baixados automaticamente na primeira chamada.
+- **Uso via linha de comando / Terminal / Scripts / TUI**:
+  ```sh
+  # Fala um texto arbitrário no idioma desejado
+  quicktrad --speak "Texto para sintetizar" --lang pt
+
+  # Suporte a pipes:
+  echo "Hello world from terminal" | quicktrad --speak --lang en
+
+  # Interrompe áudio em andamento
+  quicktrad --stop-tts
+  ```
+
 
 ## Arquivo de configuração
 
@@ -154,7 +179,18 @@ linux_backend = "xwayland" # Linux: xwayland | wayland | auto
 
 [api_keys]
 deepl = "sua-chave-aqui:fx"
+
+[tts]
+enabled = true
+auto_speak = false # se true, lê a tradução automaticamente assim que pronta
+piper_path = "piper" # ou caminho para o executável se fora do PATH
+speed = 1.0
+
+[tts.voices]
+pt = "pt_BR-faber-medium"
+en = "en_US-lessac-high"
 ```
+
 
 As preferências da janela são reaplicadas em toda abertura. Fonte, idiomas e
 tamanho também entram em vigor ao usar **Recarregar configuração**. Alterar

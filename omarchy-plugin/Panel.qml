@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
@@ -13,7 +14,9 @@ import qs.Ui
 Panel {
   id: root
   moduleName: "guts.quicktrad"
-  ipcTarget: "guts.quicktrad"
+  readonly property var _screen: button.QsWindow.window ? button.QsWindow.window.screen : null
+  ipcTarget: "guts.quicktrad" + (_screen && _screen.name ? ("." + _screen.name) : "")
+
 
   property string sourceLang: ""
   property string targetLang: ""
@@ -22,6 +25,7 @@ Panel {
   property bool querying: false
   property int querySeq: 0
   property bool pillFlash: false
+  property bool speaking: false
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -36,6 +40,24 @@ Panel {
   function refreshStatus() {
     if (statusProc.running) return
     statusProc.running = true
+  }
+
+  function runSpeak(text, lang) {
+    if (!text || text.trim() === "") return
+    if (speakProc.running) {
+      speakProc.running = false
+    }
+    speakProc.command = ["quicktrad", "--speak", text.trim(), "--lang", lang || root.targetLang]
+    speakProc.running = true
+    root.speaking = true
+  }
+
+  function stopSpeak() {
+    if (speakProc.running) {
+      speakProc.running = false
+    }
+    stopProc.running = true
+    root.speaking = false
   }
 
   function runQuery(text) {
@@ -83,10 +105,14 @@ Panel {
       resultText = ""
       resultError = ""
       refreshStatus()
-    } else if (queryProc.running) {
-      queryProc.running = false
+    } else {
+      root.stopSpeak()
+      if (queryProc.running) {
+        queryProc.running = false
+      }
     }
   }
+
 
   Process {
     id: statusProc
@@ -144,6 +170,25 @@ Panel {
     }
   }
 
+  Process {
+    id: speakProc
+    onExited: root.speaking = false
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var msg = String(text || "").trim()
+        if (msg !== "") {
+          console.warn("[quicktrad-qml-speak]", msg)
+        }
+      }
+    }
+  }
+
+  Process {
+    id: stopProc
+    command: ["quicktrad", "--stop-tts"]
+  }
+
   Timer {
     id: debounce
     interval: 350
@@ -177,7 +222,10 @@ Panel {
       // consome pra própria navegação entre painéis. Com o campo focado,
       // deixa a tecla passar direto pro TextField.
       blocked: inputField.activeFocus
-      onCloseRequested: root.close()
+      onCloseRequested: {
+        root.stopSpeak()
+        root.close()
+      }
 
       Column {
         id: column
@@ -206,11 +254,41 @@ Panel {
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             font.bold: true
-            anchors.right: swapBtn.left
+            anchors.right: speakBtn.left
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
 
             Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.OutCubic } }
+          }
+
+          Text {
+            id: speakBtn
+            text: "󰕾"
+            color: root.speaking ? root.bar.foreground : Qt.darker(root.bar.foreground, 1.4)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.title
+            anchors.right: swapBtn.left
+            anchors.rightMargin: Style.space(8)
+            anchors.verticalCenter: parent.verticalCenter
+            opacity: root.speaking ? 1.0 : 0.7
+
+
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+
+            MouseArea {
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                if (root.speaking) {
+                  root.stopSpeak()
+                } else {
+                  var textToSpeak = root.resultText.trim() !== "" ? root.resultText : inputField.text.trim()
+                  var langToUse = root.resultText.trim() !== "" ? root.targetLang : root.sourceLang
+                  root.runSpeak(textToSpeak, langToUse)
+                }
+              }
+            }
           }
 
           Text {
@@ -240,10 +318,26 @@ Panel {
           placeholderText: "Digite para traduzir"
           foreground: root.bar.foreground
           onTextChanged: debounce.restart()
-          Keys.onEscapePressed: root.close()
+          Keys.onEscapePressed: {
+            root.stopSpeak()
+            root.close()
+          }
           // Tab inverte o par atual — mesma tecla da janela flutuante.
           Keys.onTabPressed: root.runSwap()
+          Keys.onPressed: function(event) {
+            if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_R || event.text.toLowerCase() === "r")) {
+              event.accepted = true
+              if (event.modifiers & Qt.ShiftModifier) {
+                root.runSpeak(inputField.text.trim(), root.sourceLang)
+              } else {
+                var textToSpeak = root.resultText.trim() !== "" ? root.resultText : inputField.text.trim()
+                var langToUse = root.resultText.trim() !== "" ? root.targetLang : root.sourceLang
+                root.runSpeak(textToSpeak, langToUse)
+              }
+            }
+          }
         }
+
 
         Text {
           width: parent.width
@@ -259,4 +353,5 @@ Panel {
       }
     }
   }
+
 }

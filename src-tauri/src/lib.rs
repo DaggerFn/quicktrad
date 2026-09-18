@@ -1,5 +1,6 @@
 mod config;
 mod translation;
+mod tts;
 mod usage;
 
 use config::{AppConfig, WindowPosition};
@@ -362,7 +363,28 @@ fn set_font_size(font_size: u8) -> Result<u8, String> {
 
 #[tauri::command]
 fn hide_window(window: tauri::Window) {
+    tts::get_tts_manager().stop();
     let _ = window.hide();
+}
+
+#[tauri::command]
+async fn speak_text(text: String, lang: Option<String>) -> Result<(), String> {
+    if text.trim().is_empty() {
+        return Ok(());
+    }
+    let cfg = config::load();
+    let selected_lang = lang.unwrap_or(cfg.target_lang);
+    tts::get_tts_manager().speak(&text, &selected_lang, false).await
+}
+
+#[tauri::command]
+fn stop_tts() {
+    tts::get_tts_manager().stop();
+}
+
+#[tauri::command]
+fn is_tts_playing() -> bool {
+    tts::get_tts_manager().is_playing()
 }
 
 /// Comandos que rodam sem GUI e saem na hora — sem Tauri/GTK/webview, só um
@@ -372,6 +394,41 @@ fn hide_window(window: tauri::Window) {
 /// Retorna `Some(exit_code)` se tratou um comando headless; `None` significa
 /// "não é um desses, siga o fluxo normal de GUI".
 pub fn try_run_headless(args: &[String]) -> Option<i32> {
+    if let Some(pos) = args.iter().position(|a| a == "--speak") {
+        let mut text = args.get(pos + 1).cloned().unwrap_or_default();
+        let cfg = config::load();
+        let lang = if let Some(lang_pos) = args.iter().position(|a| a == "--lang") {
+            args.get(lang_pos + 1).cloned().unwrap_or_else(|| cfg.target_lang.clone())
+        } else {
+            cfg.target_lang.clone()
+        };
+
+        if text.is_empty() || text == "-" {
+            use std::io::Read;
+            let mut stdin_buf = String::new();
+            let _ = std::io::stdin().read_to_string(&mut stdin_buf);
+            text = stdin_buf;
+        }
+
+        let rt = tokio::runtime::Runtime::new().expect("failed to start tokio runtime");
+        return Some(rt.block_on(async {
+            let manager = tts::get_tts_manager();
+            match manager.speak(&text, &lang, true).await {
+                Ok(_) => 0,
+                Err(e) => {
+                    eprintln!("[quicktrad-tts] {e}");
+                    1
+                }
+            }
+        }));
+    }
+
+
+    if args.iter().any(|a| a == "--stop-tts") {
+        tts::get_tts_manager().stop();
+        return Some(0);
+    }
+
     if let Some(pos) = args.iter().position(|a| a == "--query") {
         let text = args.get(pos + 1).cloned().unwrap_or_default();
         let cfg = config::load();
@@ -472,8 +529,12 @@ pub fn run() {
             swap_languages,
             save_area_selection,
             cancel_area_selection,
-            hide_window
+            hide_window,
+            speak_text,
+            stop_tts,
+            is_tts_playing
         ]);
+
 
     #[cfg(desktop)]
     {

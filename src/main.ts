@@ -2,15 +2,24 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { syncSystemTheme } from "./theme";
 
+interface TtsConfig {
+  enabled: boolean;
+  auto_speak: boolean;
+  shortcut_speak_result: string;
+  shortcut_speak_input: string;
+}
+
 interface AppConfig {
   source_lang: string;
   target_lang: string;
   font_size: number;
+  tts?: TtsConfig;
 }
 
 let debounceTimer: number | undefined;
 let fontSize = 14;
 let swapInProgress = false;
+let currentConfig: AppConfig | undefined;
 
 const MIN_FONT_SIZE = 12;
 const MAX_FONT_SIZE = 28;
@@ -18,6 +27,8 @@ const MAX_FONT_SIZE = 28;
 const inputEl = () => document.querySelector<HTMLTextAreaElement>("#input")!;
 const resultEl = () => document.querySelector<HTMLDivElement>("#result")!;
 const langTextEl = () => document.querySelector<HTMLSpanElement>("#lang-text")!;
+const speakBtnEl = () => document.querySelector<HTMLButtonElement>("#speak-btn");
+
 
 function setResult(text: string, kind: "placeholder" | "text" | "error") {
   const el = resultEl();
@@ -95,6 +106,45 @@ function playSwapIn() {
   );
 }
 
+async function speakText(text: string, lang?: string) {
+  if (!text.trim()) return;
+  const btn = speakBtnEl();
+  btn?.classList.add("speaking");
+  try {
+    await invoke("speak_text", { text, lang });
+  } catch (err) {
+    setResult(String(err), "error");
+  } finally {
+    // Mantém o estado enquanto o áudio estiver tocando
+    const pollInterval = window.setInterval(async () => {
+      try {
+        const isPlaying = await invoke<boolean>("is_tts_playing");
+        if (!isPlaying) {
+          btn?.classList.remove("speaking");
+          window.clearInterval(pollInterval);
+        }
+      } catch {
+        btn?.classList.remove("speaking");
+        window.clearInterval(pollInterval);
+      }
+    }, 200);
+  }
+}
+
+function speakResult() {
+  const el = resultEl();
+  if (el.className === "text" && el.textContent) {
+    void speakText(el.textContent, currentConfig?.target_lang);
+  }
+}
+
+function speakInput() {
+  const text = inputEl().value;
+  if (text.trim()) {
+    void speakText(text, currentConfig?.source_lang);
+  }
+}
+
 async function doTranslate() {
   const text = inputEl().value;
   if (!text.trim()) {
@@ -105,6 +155,9 @@ async function doTranslate() {
     const translated = await invoke<string>("translate", { text });
     if (translated) {
       setResult(translated, "text");
+      if (currentConfig?.tts?.enabled && currentConfig?.tts?.auto_speak) {
+        speakResult();
+      }
     } else {
       setResult("Tradução", "placeholder");
     }
@@ -139,6 +192,7 @@ async function doSwap() {
     return;
   }
 
+  currentConfig = cfg;
   renderPill(cfg);
   playSwapIn();
 
@@ -161,9 +215,21 @@ window.addEventListener("DOMContentLoaded", async () => {
     void doSwap();
   });
 
+  speakBtnEl()?.addEventListener("click", () => {
+    speakResult();
+  });
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      void invoke("stop_tts");
       void invoke("hide_window");
+    } else if (e.ctrlKey && e.code === "KeyR") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        speakInput();
+      } else {
+        speakResult();
+      }
     } else if (
       e.ctrlKey &&
       e.altKey &&
@@ -189,6 +255,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("focus", () => inputEl().focus());
 
   const cfg = await invoke<AppConfig>("get_config");
+  currentConfig = cfg;
   fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, cfg.font_size));
   renderFontSize(fontSize);
   renderPill(cfg);
@@ -196,11 +263,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Disparado pelo backend quando um novo par de idiomas chega via flag de
   // linha de comando (ex: outro bind do compositor invocou com --en --pt).
   await listen("config-updated", async () => {
-    renderPill(await invoke<AppConfig>("get_config"));
+    const updated = await invoke<AppConfig>("get_config");
+    currentConfig = updated;
+    renderPill(updated);
     playPillPulse();
     if (inputEl().value.trim()) {
       void doTranslate();
     }
   });
-
 });
+

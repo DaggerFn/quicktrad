@@ -59,7 +59,82 @@ pub struct AppConfig {
     /// Não tem efeito em Windows/macOS e pode ser sobrescrito por GDK_BACKEND.
     #[serde(default)]
     pub linux_backend: LinuxBackend,
+    /// Configuração do Piper TTS (Text-to-Speech) rodando em CPU via ONNX Runtime.
+    #[serde(default)]
+    pub tts: TtsConfig,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TtsConfig {
+    #[serde(default = "default_tts_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_tts_auto_speak")]
+    pub auto_speak: bool,
+    #[serde(default = "default_tts_piper_path")]
+    pub piper_path: String,
+    #[serde(default = "default_tts_voices_dir")]
+    pub voices_dir: String,
+    #[serde(default = "default_tts_speed")]
+    pub speed: f32,
+    #[serde(default = "default_shortcut_speak_result")]
+    pub shortcut_speak_result: String,
+    #[serde(default = "default_shortcut_speak_input")]
+    pub shortcut_speak_input: String,
+    #[serde(default = "default_tts_voices")]
+    pub voices: HashMap<String, String>,
+}
+
+fn default_tts_enabled() -> bool {
+    true
+}
+
+fn default_tts_auto_speak() -> bool {
+    false
+}
+
+fn default_tts_piper_path() -> String {
+    "piper".into()
+}
+
+fn default_tts_voices_dir() -> String {
+    "".into()
+}
+
+fn default_tts_speed() -> f32 {
+    0.94
+}
+
+
+fn default_shortcut_speak_result() -> String {
+    "Ctrl+R".into()
+}
+
+fn default_shortcut_speak_input() -> String {
+    "Ctrl+Shift+R".into()
+}
+
+fn default_tts_voices() -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    map.insert("pt".into(), "pt_BR-faber-medium".into());
+    map.insert("en".into(), "en_US-lessac-high".into());
+    map
+}
+
+impl Default for TtsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_tts_enabled(),
+            auto_speak: default_tts_auto_speak(),
+            piper_path: default_tts_piper_path(),
+            voices_dir: default_tts_voices_dir(),
+            speed: default_tts_speed(),
+            shortcut_speak_result: default_shortcut_speak_result(),
+            shortcut_speak_input: default_shortcut_speak_input(),
+            voices: default_tts_voices(),
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -150,9 +225,31 @@ impl Default for AppConfig {
             hide_on_blur: default_hide_on_blur(),
             show_on_start: default_show_on_start(),
             linux_backend: LinuxBackend::default(),
+            tts: TtsConfig::default(),
         }
     }
 }
+
+pub fn voices_dir(cfg: &AppConfig) -> PathBuf {
+    if !cfg.tts.voices_dir.trim().is_empty() {
+        PathBuf::from(&cfg.tts.voices_dir)
+    } else {
+        let mut dir = dirs::data_dir().unwrap_or_else(std::env::temp_dir);
+        dir.push("quicktrad");
+        dir.push("voices");
+        let _ = fs::create_dir_all(&dir);
+        dir
+    }
+}
+
+pub fn piper_bin_dir() -> PathBuf {
+    let mut dir = dirs::data_dir().unwrap_or_else(std::env::temp_dir);
+    dir.push("quicktrad");
+    dir.push("bin");
+    let _ = fs::create_dir_all(&dir);
+    dir
+}
+
 
 pub fn config_dir() -> PathBuf {
     let mut dir = dirs::config_dir().unwrap_or_else(std::env::temp_dir);
