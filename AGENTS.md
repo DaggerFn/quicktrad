@@ -187,3 +187,10 @@ antiga faz parecer que nada mudou mesmo depois de recompilar).
   `--json-input`. Isso mantém os modelos ONNX na memória RAM (boot único) e
   responde a frases em ~50-150ms. Nunca mate o processo a cada sentença.
 
+## 12. Execução contínua via systemd user service (`quicktrad.service`)
+
+Nesta máquina e em desktops Linux com systemd, o Quicktrad roda gerenciado como serviço de usuário em `~/.config/systemd/user/quicktrad.service` (`graphical-session.target`).
+- Para reiniciar o processo em execução após um build: `systemctl --user restart quicktrad`.
+- Não rode uma instância concorrente solta no terminal sem antes parar o serviço (`systemctl --user stop quicktrad`), senão a instância do systemd engolirá o IPC do plugin.
+
+

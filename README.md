@@ -93,6 +93,20 @@ mais bind global padrão apontando pra ela lá, já que o uso principal agora
 é o widget. Tray icon (`Mostrar/Ocultar` / `Sair`) disponível em qualquer
 plataforma que rode a janela flutuante.
 
+### Execução automática como serviço (`systemd --user`)
+
+No Linux (Arch/CachyOS/systemd), o Quicktrad pode rodar de forma contínua e iniciar com a sua sessão gráfica via systemd user service:
+
+```sh
+# O serviço fica instalado em ~/.config/systemd/user/quicktrad.service
+systemctl --user enable --now quicktrad.service
+
+# Comandos de controle do daemon:
+systemctl --user status quicktrad
+systemctl --user restart quicktrad
+systemctl --user stop quicktrad
+```
+
 ## Atalhos de teclado (resumo)
 
 | Tecla | Onde | Ação |
