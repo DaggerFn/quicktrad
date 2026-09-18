@@ -246,6 +246,9 @@ impl TtsManager {
             return Ok(());
         }
 
+        let normalized = crate::normalizer::normalize_text(trimmed, lang);
+        let final_text = if normalized.is_empty() { trimmed } else { &normalized };
+
         let cfg = config::load();
         if !cfg.tts.enabled {
             return Err("Text-to-Speech está desativado no config.toml".into());
@@ -275,12 +278,12 @@ impl TtsManager {
             }
 
             let worker = workers.get_mut(&voice_name).unwrap();
-            if let Err(err) = worker.synthesize(trimmed, &temp_wav).await {
+            if let Err(err) = worker.synthesize(final_text, &temp_wav).await {
                 // Tenta reiniciar o worker uma vez se falhar (ex: processo caiu)
                 workers.remove(&voice_name);
                 let mut fresh_worker = PiperWorker::spawn(&piper_bin, &onnx_path, &json_path, &voice_name, length_scale).await?;
                 fresh_worker
-                    .synthesize(trimmed, &temp_wav)
+                    .synthesize(final_text, &temp_wav)
                     .await
                     .map_err(|e| format!("Falha na síntese do Piper após reinício: {e} (anterior: {err})"))?;
                 workers.insert(voice_name.clone(), fresh_worker);

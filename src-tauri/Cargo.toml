@@ -33,4 +33,6 @@ toml = "0.8"
 dirs = "5"
 rusqlite = { version = "0.31", features = ["bundled"] }
 rodio = "0.20"
+regex = "1"
+
 

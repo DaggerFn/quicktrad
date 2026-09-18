@@ -128,6 +128,23 @@ O Quicktrad conta com síntese de voz neural local de alta velocidade:
   quicktrad --stop-tts
   ```
 
+### Normalização de texto e gírias (`replacements.toml`)
+
+Para evitar que modelos neurais soletrem gírias de internet e abreviações letra por letra (como `idk`, `wtf`, `vc`, `pq`, `c/`, `/`), o Quicktrad conta com um normalizador léxico de alta performance em Rust, pré-compilado em uma única passagem regex com preservação de fronteiras de palavras (`\b`).
+
+- **Dicionário embutido**: centenas de gírias e abreviações em PT-BR e EN-US já vêm compiladas no executável (`src-tauri/replacements.toml`).
+- **Personalização pelo usuário**: você pode adicionar ou sobrescrever termos criando um arquivo `replacements.toml` em `~/.config/quicktrad/replacements.toml` (Linux/macOS) ou `%APPDATA%\quicktrad\replacements.toml` (Windows):
+
+  ```toml
+  [pt]
+  "minhasigla" = "minha sigla por extenso"
+  "c/" = "com"
+
+  [en]
+  "myabbr" = "my abbreviation in full"
+  ```
+
+
 
 ## Arquivo de configuração
 

@@ -1,4 +1,5 @@
 mod config;
+mod normalizer;
 mod translation;
 mod tts;
 mod usage;
@@ -133,6 +134,7 @@ fn open_config_file(app: &tauri::AppHandle) {
 
 fn reload_configuration(app: &tauri::AppHandle) {
     let cfg = config::load();
+    normalizer::reload_normalizer();
     if let Some(window) = app.get_webview_window("main") {
         apply_window_config(&window, &cfg);
         let _ = window.emit("config-updated", ());
